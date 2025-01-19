@@ -34,7 +34,7 @@ pnr:
 	@echo "##################################################"
 	@echo ""
 
-	$(PNR) --$(DEVICE) --package $(PACKAGE) --json $(OUT_DIR)/$(PROJECT)/synth.json --pcf $(PCF_FILE) --asc $(OUT_DIR)/$(PROJECT)/stream.asc
+	$(PNR) --$(DEVICE) --package $(PACKAGE) --json $(OUT_DIR)/$(PROJECT)/synth.json --pcf $(PCF_FILE) --asc $(OUT_DIR)/$(PROJECT)/$(PROJECT).asc
 
 pack:
 	@echo ""
@@ -43,7 +43,7 @@ pack:
 	@echo "##################################################"
 	@echo ""
 
-	$(PACKAGER) $(OUT_DIR)/$(PROJECT)/stream.asc $(OUT_DIR)/$(PROJECT)/stream.bin
+	$(PACKAGER) $(OUT_DIR)/$(PROJECT)/$(PROJECT).asc $(OUT_DIR)/$(PROJECT)/$(PROJECT).bin
 
 test:
 	@echo ""
