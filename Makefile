@@ -52,9 +52,10 @@ test:
 	@echo "##################################################"
 	@echo ""
 
-	@mkdir -p $(OUT_DIR)/$(PROJECT)/vvp/$(dir $(BENCH))
-
-	$(IVERILOG) -I $(SRC_DIR) -o $(OUT_DIR)/$(PROJECT)/vvp/$(BENCH).vvp $(TEST_DIR)/$(BENCH)/.v
+	@VVP_OUT=$(patsubst $(TEST_DIR)/%.v,$(OUT_DIR)/$(PROJECT)/vvp/%.vvp,$(BENCH)); \
+		mkdir -p $(dir $$VVP_OUT); \
+		$(IVERILOG) -I $(SRC_DIR) -o $$VVP_OUT $(BENCH); \
+		$(VVP) $$VVP_OUT
 
 
 clean:

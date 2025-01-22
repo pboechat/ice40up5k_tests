@@ -8,28 +8,29 @@ module uart_receiver #(
     output reg [7:0] data_out, // received 8-bit data package
     output reg data_ready      // is data ready?
 );
-    // bit frame = number of clock cycles for receiving a bit
-    localparam BIT_FRAME = CLOCK_FREQ / BAUD_RATE;
+    // bit period = number of clock cycles for receiving a bit
+    localparam BIT_PERIOD = CLOCK_FREQ / BAUD_RATE;
 
     // states
-    localparam IDLE       = 2'b00;
+    localparam IDLE           = 2'b00;
     localparam RCV_START_BIT  = 2'b01;
     localparam RCV_DATA_BITS  = 2'b10;
     localparam RCV_STOP_BIT   = 2'b11;
 
     reg [1:0] state = IDLE;
-    reg [$clog2(BIT_FRAME)-1:0] timer = 0;
+    reg [$clog2(BIT_PERIOD)-1:0] timer = 0;
     reg [3:0] bit_index = 0; // tracks which data bit is being received
-    reg [7:0] data = 0; // data being received
+    reg [7:0] shift_reg = 0; // data being received
 
     always@(posedge clk) 
     begin
         if (reset)
         begin
+            $display("[uart_receiver        ] - T(%t) - reset", $time);
             state <= IDLE;
             timer <= 0;
             bit_index <= 0;
-            data <= 0;
+            shift_reg <= 0;
             data_ready <= 0;
             data_out <= 0;
         end
@@ -41,8 +42,9 @@ module uart_receiver #(
                     data_ready <= 1'b0;             // announce data is not ready
                     if (rx == 0)                    // rx is low, wait for the start bit 
                     begin
+                        $display("[uart_receiver        ] - T(%t) - preparing for start bit", $time);
                         state <= RCV_START_BIT;     // prepare for receiving the start bit
-                        timer <= BIT_FRAME / 2;     // sample rx in the middle of a frame
+                        timer <= BIT_PERIOD / 2;     // sample rx in the middle of a frame
                     end
                 end
                 RCV_START_BIT: 
@@ -51,12 +53,14 @@ module uart_receiver #(
                     begin
                         if (rx == 0)                // rx is still low, start bit received
                         begin
+                            $display("[uart_receiver        ] - T(%t) - start bit received", $time);
                             state <= RCV_DATA_BITS; // prepare for receiving the data bits
                             bit_index <= 0; 
-                            timer <= BIT_FRAME;
+                            timer <= BIT_PERIOD - 1;
                         end 
                         else                        // false start
                         begin
+                            $display("[uart_receiver        ] - T(%t) - false start", $time);
                             state <= IDLE;          // go back to IDLE
                         end
                     end 
@@ -69,13 +73,15 @@ module uart_receiver #(
                 begin
                     if (timer == 0)
                     begin
-                        data[bit_index] <= rx;      // receive current data bit
+                        $display("[uart_receiver        ] - T(%t) - bit %d received (%b)", $time, bit_index, rx);
+                        shift_reg[bit_index] <= rx;      // receive current data bit
                         bit_index <= bit_index + 1;
-                        timer <= BIT_FRAME;
                         if (bit_index == 7)         // received all 8 bits
                         begin
+                            $display("[uart_receiver        ] - T(%t) - preparing to receive stop bit", $time);
                             state <= RCV_STOP_BIT;  // prepare for receiving the stop bit
                         end
+                        timer <= BIT_PERIOD - 1;
                     end
                     else 
                     begin
@@ -88,8 +94,13 @@ module uart_receiver #(
                     begin
                         if (rx == 1)                // rx is high, stop bit received
                         begin
-                            data_out <= data;
+                            $display("[uart_receiver        ] - T(%t) - stop bit received", $time);
+                            data_out <= shift_reg;
                             data_ready <= 1'b1;     // announce that data is ready!
+                        end
+                        else
+                        begin
+                            $display("[uart_receiver        ] - T(%t) - no stop bit, invalid data", $time);
                         end
                         state <= IDLE;              // go back to IDLE
                     end 

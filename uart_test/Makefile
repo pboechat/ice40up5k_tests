@@ -9,8 +9,8 @@ pnr:
 pack:
 	make -C . pnr PROJECT=$(PROJECT)
 
-test: src/test/%.v
-	make -C . test PROJECT=$(PROJECT) BENCH=$>
+uart_receiver_tb:
+	make -C . test PROJECT=$(PROJECT) BENCH=uart_test/src/test/uart_receiver_tb.v
 
 all:
 	make -C . all PROJECT=$(PROJECT)
