@@ -9,7 +9,6 @@ module uart_receiver_tb;
     reg clk_val;
     reg reset_val;
     reg rx_val;
-    reg[7:0] test_data = TEST_DATA;
     wire[7:0] data_out;
     wire data_ready;
 
@@ -53,7 +52,7 @@ module uart_receiver_tb;
 
         for (i = 0; i < 8; i++) 
         begin
-            rx_val = test_data[j++];
+            rx_val = TEST_DATA[j++];
             #8;                             // run for 4 cycles / 1 bit period (read data bit)
         end
 
