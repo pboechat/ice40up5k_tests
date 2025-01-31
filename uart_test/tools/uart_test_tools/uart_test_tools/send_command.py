@@ -103,7 +103,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('-p', '--port', type=str, required=False, default=_DEFAULT_PORT)
     parser.add_argument('-b', '--baud-rate', type=int, required=False, default=_DEFAULT_BAUD_RATE)
-    parser.add_argument('-c', '--command', type=str, required=True);
+    parser.add_argument('-c', '--command', type=str, required=True)
     parser.add_argument('-v', '--verbose', action='store_true', required=False)
     args = parser.parse_args()
     

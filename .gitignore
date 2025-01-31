@@ -8,3 +8,6 @@ out/
 .venv/
 __pycache__/
 *.egg-info
+
+# value change dumps
+*.vcd

@@ -1,4 +1,4 @@
-`include "uart_receiver.v"
+`include "uart/uart_receiver.v"
 
 module uart_receiver_tb;
     localparam TEST_DATA = 8'b10101010;
@@ -9,6 +9,7 @@ module uart_receiver_tb;
     reg clk_val;
     reg reset_val;
     reg rx_val;
+    reg[7:0] test_data = TEST_DATA;
     wire[7:0] data_out;
     wire data_ready;
 
@@ -20,7 +21,7 @@ module uart_receiver_tb;
 
     uart_receiver #(
 		.BAUD_RATE(1),
-    	.CLOCK_FREQ(4)                      // 1 bit period at every 4 clock cycles (or 8 time units)
+    	.SYS_CLK_FREQ(4)                    // 1 bit period at every 4 clock cycles (or 8 time units)
 	) uart_receiver_inst(
 		.clk(clk),
 		.reset(reset),
@@ -52,7 +53,7 @@ module uart_receiver_tb;
 
         for (i = 0; i < 8; i++) 
         begin
-            rx_val = TEST_DATA[j++];
+            rx_val = test_data[j++];
             #8;                             // run for 4 cycles / 1 bit period (read data bit)
         end
 

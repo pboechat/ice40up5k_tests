@@ -30,3 +30,7 @@ Blinks the LED in RGB at every 3 seconds.
 ### [uart_test](uart_test)
 
 Implements a very simple command decoder over UART.
+
+### [ili9341_test](ili9341_test)
+
+TODO

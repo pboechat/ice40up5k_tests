@@ -22,7 +22,7 @@ module top(
 
 	uart_receiver #(
 		.BAUD_RATE(9_600),			// 9.6 KHz
-    	.CLOCK_FREQ(48_000_000)		// 48 MHz
+    	.SYS_CLK_FREQ(48_000_000)   // 48 MHz
 	) uart_receiver_inst(
 		.clk(clk),
 		.reset(reset),
@@ -33,7 +33,7 @@ module top(
 
 	uart_transmitter #(
 		.BAUD_RATE(9_600),			// 9.6 KHz
-    	.CLOCK_FREQ(48_000_000)		// 48 MHz
+    	.SYS_CLK_FREQ(48_000_000)	// 48 MHz
 	) uart_transmitter_inst(
 		.clk(clk),
 		.reset(reset),

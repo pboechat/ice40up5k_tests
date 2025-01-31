@@ -25,7 +25,7 @@ synth:
 
 	@mkdir -p $(OUT_DIR)/$(PROJECT)
 	
-	$(SYNTH) -p "read_verilog $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json"
+	$(SYNTH) -p "verilog_defines -D DEBUG; read_verilog -I common/src/rtl common/src/rtl/*.v common/src/rtl/uart/*.v common/src/rtl/spi/*.v $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json"
 
 pnr:
 	@echo ""
@@ -52,10 +52,10 @@ test:
 	@echo "##################################################"
 	@echo ""
 
-	@VVP_OUT=$(patsubst $(TEST_DIR)/%.v,$(OUT_DIR)/$(PROJECT)/vvp/%.vvp,$(BENCH)); \
-		mkdir -p $(dir $$VVP_OUT); \
-		$(IVERILOG) -I $(SRC_DIR) -o $$VVP_OUT $(BENCH); \
-		$(VVP) $$VVP_OUT
+	@VVP_OUT=$(OUT_DIR)/$(PROJECT)/vvp/$(notdir $(BENCH)).vvp; \
+		mkdir -p $(OUT_DIR)/$(PROJECT)/vvp; \
+		$(IVERILOG) -DSIMULATION -I common/src/rtl -I $(SRC_DIR) -o $$VVP_OUT $(BENCH); \
+		$(VVP) $$VVP_OUT +notimingcheck +stop_time=10000;
 
 
 clean:
