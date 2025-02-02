@@ -1,5 +1,5 @@
 `include "display_controller.v"
-`include "master_spi_controller.v"
+`include "spi/ice40_master_spi_controller.v"
 
 module top_tb;
     wire clk;
@@ -19,10 +19,6 @@ module top_tb;
     reg reset_val;
     reg spi_ack_val;
     reg tx_start_val;
-`ifdef DEBUG
-    wire dc_b, dc_g, dc_r;
-    wire msc_b, msc_g, msc_r;
-`endif
 
     assign clk = clk_val;
     assign reset = reset_val;
@@ -33,8 +29,11 @@ module top_tb;
     always #1 clk_val = ~clk_val;
 
     localparam DIS_RES_X = 4;
+    localparam END_COL = DIS_RES_X - 1;
     localparam DIS_RES_Y = 3;
-    localparam HW_RESET_TIMER = 100;
+    localparam END_PAGE = DIS_RES_Y - 1;
+    localparam HW_RESET_HOLD_TIMER = 4;
+    localparam HW_RESET_RELEASE_TIMER = 100;
     localparam SW_RESET_TIMER = 4;
     localparam SLEEP_OUT_TIMER = 100;
     localparam DISPLAY_ON_TIMER = 8;
@@ -42,7 +41,8 @@ module top_tb;
     display_controller #(
         .DIS_RES_X(DIS_RES_X),
         .DIS_RES_Y(DIS_RES_Y),
-        .HW_RESET_TIMER(HW_RESET_TIMER),
+        .HW_RESET_HOLD_TIMER(HW_RESET_HOLD_TIMER),
+        .HW_RESET_RELEASE_TIMER(HW_RESET_RELEASE_TIMER),
         .SW_RESET_TIMER(SW_RESET_TIMER),
         .SLEEP_OUT_TIMER(SLEEP_OUT_TIMER),
         .DISPLAY_ON_TIMER(DISPLAY_ON_TIMER)
@@ -54,16 +54,11 @@ module top_tb;
         .dc(dc),
         .tx_start(tx_start),
         .tx_data(tx_data)
-`ifdef DEBUG
-        , .b(dc_b),
-        .g(dc_g),
-        .r(dc_r)
-`endif
     );
 
     localparam SPI_CLK_DIVIDER = 1;
 
-    master_spi_controller #(
+    ice40_master_spi_controller #(
         .SPI_CLK_DIVIDER(SPI_CLK_DIVIDER)
     ) spi_controller_inst(
         .clk(clk),
@@ -77,11 +72,6 @@ module top_tb;
         .spi_strobe(spi_strobe),
         .spi_data_in(spi_data_in),
         .tx_busy(tx_busy)
-`ifdef DEBUG
-        , .b(b),
-        .g(g),
-        .r(r)
-`endif
     );
 
     localparam SPI_ACK_TIMER = 2;
@@ -154,7 +144,7 @@ module top_tb;
 
         #(CYCLE_TO_TU);                                             // 1 cycle (reset)
 
-        assert_eq(dis_reset, 0, "dis_reset");
+        assert_eq(dis_reset, 1, "dis_reset");
         assert_eq(tx_busy, 1, "tx_busy");
 
         reset_val = 1'b0;                                           // set reset low
@@ -211,12 +201,12 @@ module top_tb;
             else if (step == 10)
             begin
                 assert_eq(dc, `DATA_BIT, "dc");
-                assert_tx_data(DIS_RES_X[15:8]);
+                assert_tx_data(END_COL[15:8]);
             end
             else if (step == 11)
             begin
                 assert_eq(dc, `DATA_BIT, "dc");
-                assert_tx_data(DIS_RES_X[7:0]);
+                assert_tx_data(END_COL[7:0]);
             end
             else if (step == 12)
             begin
@@ -231,12 +221,12 @@ module top_tb;
             else if (step == 15)
             begin
                 assert_eq(dc, `DATA_BIT, "dc");
-                assert_tx_data(DIS_RES_Y[15:8]);
+                assert_tx_data(END_PAGE[15:8]);
             end
             else if (step == 16)
             begin
                 assert_eq(dc, `DATA_BIT, "dc");
-                assert_tx_data(DIS_RES_Y[7:0]);
+                assert_tx_data(END_PAGE[7:0]);
             end
             else if (step == 17)
             begin

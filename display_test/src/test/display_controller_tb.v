@@ -11,9 +11,6 @@ module display_controller_tb;
     reg clk_val;
     reg reset_val;
     reg tx_busy_val;
-`ifdef DEBUG
-    wire b, g, r;
-`endif
 
     assign clk = clk_val;
     assign reset = reset_val;
@@ -24,8 +21,11 @@ module display_controller_tb;
     always #1 clk_val = ~clk_val;
 
     localparam DIS_RES_X = 4;
+    localparam END_COL = DIS_RES_X - 1;
     localparam DIS_RES_Y = 3;
-    localparam HW_RESET_TIMER = 100;
+    localparam END_PAGE = DIS_RES_Y - 1;
+    localparam HW_RESET_HOLD_TIMER = 4;
+    localparam HW_RESET_RELEASE_TIMER = 100;
     localparam SW_RESET_TIMER = 4;
     localparam SLEEP_OUT_TIMER = 100;
     localparam DISPLAY_ON_TIMER = 8;
@@ -33,7 +33,8 @@ module display_controller_tb;
     display_controller #(
         .DIS_RES_X(DIS_RES_X),
         .DIS_RES_Y(DIS_RES_Y),
-        .HW_RESET_TIMER(HW_RESET_TIMER),
+        .HW_RESET_HOLD_TIMER(HW_RESET_HOLD_TIMER),
+        .HW_RESET_RELEASE_TIMER(HW_RESET_RELEASE_TIMER),
         .SW_RESET_TIMER(SW_RESET_TIMER),
         .SLEEP_OUT_TIMER(SLEEP_OUT_TIMER),
         .DISPLAY_ON_TIMER(DISPLAY_ON_TIMER)
@@ -45,11 +46,6 @@ module display_controller_tb;
         .dc(dc),
         .tx_start(tx_start),
         .tx_data(tx_data)
-`ifdef DEBUG
-        , .b(b),
-        .g(g),
-        .r(r)
-`endif
     );
     
     integer cycle_count = 0;
@@ -141,30 +137,25 @@ module display_controller_tb;
         $dumpfile("display_controller_tb.vcd");
         $dumpvars(0, display_controller_tb);
 
-        $display("[display_controller_tb           ] - T(%9t) - HW_RESET_TIMER:                  %9d cc / %9d tu", $time, HW_RESET_TIMER, HW_RESET_TIMER * CYCLE_TO_TU);
-        $display("[display_controller_tb           ] - T(%9t) - SW_RESET_TIMER:                  %9d cc / %9d tu", $time, SW_RESET_TIMER, SW_RESET_TIMER * CYCLE_TO_TU);
-        $display("[display_controller_tb           ] - T(%9t) - SLEEP_OUT_TIMER:                 %9d cc / %9d tu", $time, SLEEP_OUT_TIMER, SLEEP_OUT_TIMER * CYCLE_TO_TU);
-        $display("[display_controller_tb           ] - T(%9t) - DISPLAY_ON_TIMER:                %9d cc / %9d tu", $time, DISPLAY_ON_TIMER, DISPLAY_ON_TIMER * CYCLE_TO_TU);
-
         clk_val = 1'b1;                                             // set clk high
         tx_busy_val = 1'b0;                                         // set tx_busy low
         reset_val = 1'b1;                                           // set reset high
 
         #(CYCLE_TO_TU);                                             // 1 cycle (reset)
 
-        assert_eq(dis_reset, 0, "dis_reset");
+        assert_eq(dis_reset, 1, "dis_reset");
 
         reset_val = 1'b0;                                           // set reset low
 
-        @(dis_reset_hi_evt)
+        @(dis_reset_lo_evt)
 
         start_cycle_rec;
 
-        @(dis_reset_lo_evt)
+        @(dis_reset_hi_evt)
 
         stop_cycle_rec;
 
-        assert_eq(elapsed_cycles, HW_RESET_TIMER, "elapsed_cycles");
+        assert_eq(elapsed_cycles, HW_RESET_HOLD_TIMER, "elapsed_cycles");
 
         forever 
         begin
@@ -172,6 +163,8 @@ module display_controller_tb;
 
             if (step == 0)
             begin
+                stop_cycle_rec;
+                assert_gt(elapsed_cycles, HW_RESET_RELEASE_TIMER, "elapsed_cycles");
                 asset_command(`SW_RESET_CMD);
                 start_cycle_rec;
             end
@@ -206,11 +199,11 @@ module display_controller_tb;
             end
             else if (step == 10)
             begin
-                asset_data(DIS_RES_X[15:8]);
+                asset_data(END_COL[15:8]);
             end
             else if (step == 11)
             begin
-                asset_data(DIS_RES_X[7:0]);
+                asset_data(END_COL[7:0]);
             end
             else if (step == 12)
             begin
@@ -222,11 +215,11 @@ module display_controller_tb;
             end
             else if (step == 15)
             begin
-                asset_data(DIS_RES_Y[15:8]);
+                asset_data(END_PAGE[15:8]);
             end
             else if (step == 16)
             begin
-                asset_data(DIS_RES_Y[7:0]);
+                asset_data(END_PAGE[7:0]);
             end
             else if (step == 17)
             begin

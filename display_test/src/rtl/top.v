@@ -1,3 +1,6 @@
+`include "spi/ice40_master_spi_controller.v"
+`include "uart_dbg.v"
+
 module top(
     input wire reset,
     input wire dis_reset,                   // display reset
@@ -9,8 +12,8 @@ module top(
 `ifdef DEBUG
     , output wire tx,                       // UART TX output
     output wire RGB0,
-	output wire RGB1, 
-	output wire RGB2
+    output wire RGB1, 
+    output wire RGB2
 `endif
 );
     wire clk;
@@ -24,27 +27,25 @@ module top(
     wire[7:0] spi_data_out;
     wire spi_ack;
 `ifdef DEBUG
-    wire dbg_msg_q_full;
-    reg dbg_msg_wr;
+    reg dbg_wr;
     reg[7:0] dbg_msg;
-    wire dc_b, dc_g, dc_r;
-    wire msc_b, msc_g, msc_r;
-    wire b, g, r;
+    reg b, g, r;
 `endif
 
-	SB_HFOSC #(
-		.CLKHF_DIV("0b01")                  // 24 MHz
-	) high_freq_oscillator(
-		.CLKHFPU(1'b1),				        // power-up oscillator
-		.CLKHFEN(1'b1),				        // enable clock output
-		.CLKHF(clk)					        // clock output
-	);
+    SB_HFOSC #(
+        .CLKHF_DIV("0b10")                      // 12 MHz
+    ) high_freq_oscillator(
+        .CLKHFPU(1'b1),                         // power-up oscillator
+        .CLKHFEN(1'b1),                         // enable clock output
+        .CLKHF(clk)                             // clock output
+    );
 
     display_controller #(
-        .HW_RESET_TIMER(4_000_000),        // 125 ms
-        .SW_RESET_TIMER(120_000),          // 5 ms
-        .SLEEP_OUT_TIMER(4_000_000),       // 125 ms
-        .DISPLAY_ON_TIMER(240_000),        // 10 ms
+        .HW_RESET_HOLD_TIMER(120_000),          // 10 ms
+        .HW_RESET_RELEASE_TIMER(1_440_000),     // 120 ms
+        .SW_RESET_TIMER(120_000),               // 10 ms
+        .SLEEP_OUT_TIMER(1_440_000),            // 120 ms
+        .DISPLAY_ON_TIMER(120_000),             // 10 ms
         .DIS_RES_X(320),
         .DIS_RES_Y(240),
     ) display_controller_inst (
@@ -53,13 +54,9 @@ module top(
         .tx_busy(tx_busy),
         .dis_reset(dis_reset),
         .dc(dc),
+        .cs(cs),
         .tx_start(tx_start),
         .tx_data(tx_data)
-`ifdef DEBUG
-        , .b(dc_b),
-        .g(dc_g),
-        .r(dc_r)
-`endif
     );
 
     SB_SPI #(
@@ -93,14 +90,14 @@ module top(
         .SBDATO6(spi_data_out[6]), 
         .SBDATO7(spi_data_out[7]),
         .SBACKO(spi_ack),                   // system acknowledgement
-        .MI(so),                            // master-in
         .MO(si),                            // master-out
-        .SCKO(sck),                         // sck
-        .MCSNO0(cs)                         // chip select (line 0)
+        .MI(so),                            // master-in
+        .SCKI(clk),
+        .SCKO(sck)                          // sck
     );
 
     ice40_master_spi_controller #(
-        .SPI_CLK_DIVIDER(3)                 // 24 / (3+1) = 6 MHz
+        .SPI_CLK_DIVIDER(0)                 // 12 / (1+1) = 6 MHz
     ) spi_controller_inst(
         .clk(clk),
         .reset(reset),
@@ -113,60 +110,62 @@ module top(
         .spi_strobe(spi_strobe),
         .spi_data_in(spi_data_in),
         .tx_busy(tx_busy)
-`ifdef DEBUG
-        , .b(msc_b),
-        .g(msc_g),
-        .r(msc_r)
-`endif
     );
 
 `ifdef DEBUG
     uart_dbg #(
-        .SYS_CLK_FREQ(24_000_000),
-        .BAUD_RATE(200_000)
+        .SYS_CLK_FREQ(12_000_000),
+        .BAUD_RATE(115_200),
+        .MSG_QUEUE_SIZE(32)
     ) uart_dbg_inst (
         .clk(clk),
         .reset(reset),
-        .wr(dbg_msg_wr),
-        .msg(spi_data_in),
-        .tx(tx),
-        .full(dbg_msg_q_full)
+        .wr(dbg_wr),
+        .msg(dbg_msg),
+        .tx(tx)
     );
 
     // debug data being transmitted over SPI
     always @(posedge clk)
     begin
-        if (!dbg_msg_q_full) // if queue is full, ignore msg
+        if (reset)
         begin
-            if (spi_strobe)
+            b <= 0;
+            g <= 0;
+            r <= 1;
+        end
+        else
+        begin
+            b <= 0;
+            g <= 1;
+            r <= 0;
+            
+            if (spi_ack && !spi_rw)
             begin
-                dbg_msg_wr <= 1;
+                dbg_wr <= 1;
+                dbg_msg <= spi_data_out;
             end
             else
             begin
-                dbg_msg_wr <= 0;
+                dbg_wr <= 0;
             end
         end
     end
 
-    assign b = dc_b || msc_b;
-    assign g = dc_g || msc_g;
-    assign r = dc_r || msc_r;
-
     SB_RGBA_DRV #(
-		.CURRENT_MODE("0b1"),		        // half current mode
-		.RGB0_CURRENT("0b000111"),          // 12 mA
-		.RGB1_CURRENT("0b000111"),          // 12 mA
-		.RGB2_CURRENT("0b000111")           // 12 mA
-	) rgb_driver(
-        .CURREN(1'b1),			            // enable current
-        .RGBLEDEN(1'b1),			        // enable LED driver
-        .RGB0PWM(b),			            // blue PWM input
-        .RGB1PWM(g),			            // green PWM input
-        .RGB2PWM(r),			            // red PWM input
-        .RGB0(RGB0),				        // blue output
-        .RGB1(RGB1),				        // green output
-        .RGB2(RGB2)				            // red output
-	);
+        .CURRENT_MODE("0b1"),               // half current mode
+        .RGB0_CURRENT("0b000111"),          // 12 mA
+        .RGB1_CURRENT("0b000111"),          // 12 mA
+        .RGB2_CURRENT("0b000111")           // 12 mA
+    ) rgb_driver(
+        .CURREN(1'b1),                      // enable current
+        .RGBLEDEN(1'b1),                    // enable LED driver
+        .RGB0PWM(b),                        // blue PWM input
+        .RGB1PWM(g),                        // green PWM input
+        .RGB2PWM(r),                        // red PWM input
+        .RGB0(RGB0),                        // blue output
+        .RGB1(RGB1),                        // green output
+        .RGB2(RGB2)                         // red output
+    );
 `endif
 endmodule

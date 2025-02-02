@@ -1,3 +1,6 @@
+`ifndef UART_TRANSMITTER_V
+`define UART_TRANSMITTER_V
+
 module uart_transmitter #(
     parameter BAUD_RATE = 9_600,
     parameter SYS_CLK_FREQ = 48_000_000                             // 48 MHz
@@ -100,3 +103,5 @@ module uart_transmitter #(
         end
     end
 endmodule
+
+`endif

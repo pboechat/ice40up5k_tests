@@ -25,7 +25,7 @@ synth:
 
 	@mkdir -p $(OUT_DIR)/$(PROJECT)
 	
-	$(SYNTH) -p "verilog_defines -D DEBUG; read_verilog -I common/src/rtl common/src/rtl/*.v common/src/rtl/uart/*.v common/src/rtl/spi/*.v $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json"
+	$(SYNTH) -p "verilog_defines -D DEBUG; read_verilog -I common/src/rtl $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json"
 
 pnr:
 	@echo ""

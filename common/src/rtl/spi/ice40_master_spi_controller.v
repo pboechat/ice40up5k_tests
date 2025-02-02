@@ -1,3 +1,6 @@
+`ifndef ICE40_MASTER_SPI_CONTROLLER_V
+`define ICE40_MASTER_SPI_CONTROLLER_V
+
 `include "spi/ice40_spi.vh"
 
 module ice40_master_spi_controller #(
@@ -14,11 +17,6 @@ module ice40_master_spi_controller #(
     output reg spi_strobe,
     output reg[7:0] spi_data_in,
     output reg tx_busy
-`ifdef DEBUG
-    , output reg b,
-    output reg g,
-    output reg r
-`endif
 );
     `include "functions.vh"
 
@@ -46,11 +44,6 @@ module ice40_master_spi_controller #(
             spi_reg_addr <= 0;
             spi_strobe <= 0;
             spi_data_in <= 0;
- `ifdef DEBUG
-            b <= 0;
-            g <= 0;
-            r <= 1;
-`endif
         end
         else
         begin
@@ -62,20 +55,10 @@ module ice40_master_spi_controller #(
                     spi_data_in <= {2'b00, 3'b000, 3'b000};
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if (spi_ack)
                     begin
                         spi_strobe <= 0;
                         state <= SET_CR1_REG;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 SET_CR1_REG:
@@ -85,43 +68,23 @@ module ice40_master_spi_controller #(
                     spi_data_in <= {1'b1, 1'b0, 1'b0, 1'b0, 4'b0000 }; 
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if (spi_ack)
                     begin
                         spi_strobe <= 0;
                         state <= SET_CR2_REG;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 SET_CR2_REG:
                 begin
                     spi_reg_addr <= `SPICR2;
                     // master-slave mode, master CCSPIN hold, slave dummy byte, 00, CPOL, CPHA, LSB
-                    spi_data_in <= {1'b1, 1'b0, 1'b0, 2'b00, 1'b0, 1'b0, 1'b1 }; 
+                    spi_data_in <= {1'b1, 1'b0, 1'b0, 2'b00, 1'b0, 1'b0, 1'b0 }; 
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if (spi_ack)
                     begin
                         spi_strobe <= 0;
                         state <= SET_BR_REG;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 SET_BR_REG:
@@ -131,44 +94,24 @@ module ice40_master_spi_controller #(
                     spi_data_in <= {2'b00, SPI_CLK_DIVIDER[5:0]}; 
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if (spi_ack)
                     begin
                         spi_strobe <= 0;
                         state <= SET_CSR_REG;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 SET_CSR_REG:
                 begin
                     spi_reg_addr <= `SPICSR;
                     // 0000, CS
-                    spi_data_in <= {4'b0000, 4'b0000}; 
+                    spi_data_in <= {4'b0000, 4'b0001}; 
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if (spi_ack)
                     begin
                         spi_strobe <= 0;
                         tx_busy <= 0;
                         state <= IDLE;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 IDLE:
@@ -185,11 +128,6 @@ module ice40_master_spi_controller #(
                     spi_reg_addr <= `SPISR;
                     spi_strobe <= 1;
                     spi_rw <= 0;
-`ifdef DEBUG
-                    b <= 1;
-                    g <= 0;
-                    r <= 0;
-`endif
                     if (spi_ack) 
                     begin
                         spi_strobe <= 0;
@@ -199,11 +137,6 @@ module ice40_master_spi_controller #(
                             tx_busy <= 1;
                             state <= TRANSMITTING;
                         end
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 TRANSMITTING:
@@ -212,21 +145,11 @@ module ice40_master_spi_controller #(
                     spi_data_in <= tx_data_cpy;
                     spi_strobe <= 1;
                     spi_rw <= 1;
-`ifdef DEBUG
-                    b <= 0;
-                    g <= 1;
-                    r <= 0;
-`endif
                     if(spi_ack == 1) 
                     begin
                         spi_strobe <= 0;
                         tx_busy <= 0;
                         state <= IDLE;
-`ifdef DEBUG
-                        b <= 0;
-                        g <= 0;
-                        r <= 0;
-`endif
                     end
                 end
                 default:
@@ -237,3 +160,5 @@ module ice40_master_spi_controller #(
         end
     end
 endmodule
+
+`endif

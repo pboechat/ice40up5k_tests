@@ -1,3 +1,6 @@
+`ifndef ICE40_SPI_VH
+`define ICE40_SPI_VH
+
 /************************************************************ 
  *  From Advanced iCE40 I2C and SPI Hardened IP User Guide  *
  ************************************************************/
@@ -10,3 +13,5 @@
 `define SPISR     4'b1100       // SPI Status Register
 `define SPITXDR   4'b1101       // SPI Transmit Data Register
 `define SPICSR    4'b1111       // SPI Chip Select Mask For Master
+
+`endif

@@ -1,7 +1,13 @@
+`ifndef UART_DBG_V
+`define UART_DBG_V
+
+`include "fifo.v"
+`include "uart/uart_transmitter.v"
+
 module uart_dbg #(
     parameter SYS_CLK_FREQ = 48_000_000,
-    parameter BAUD_RATE = 9_000_000,
-    parameter FIFO_DEPTH = 32
+    parameter BAUD_RATE = 9_600,
+    parameter MSG_QUEUE_SIZE = 32
 ) (
     input wire clk,
     input wire reset,
@@ -17,7 +23,7 @@ module uart_dbg #(
 
     fifo #(
         .DATA_WIDTH(8),
-        .FIFO_DEPTH(FIFO_DEPTH)
+        .FIFO_DEPTH(MSG_QUEUE_SIZE)
     ) msg_queue (
         .clk(clk),
         .reset(reset),
@@ -30,16 +36,16 @@ module uart_dbg #(
     );
 
     uart_transmitter #(
-		.BAUD_RATE(BAUD_RATE),
-    	.SYS_CLK_FREQ(SYS_CLK_FREQ)
-	) uart_tx_inst(
-		.clk(clk),
-		.reset(reset),
-		.data_in(tx_msg),
-		.send(send),
-		.tx(tx),
-		.busy(tx_busy)
-	);
+        .BAUD_RATE(BAUD_RATE),
+        .SYS_CLK_FREQ(SYS_CLK_FREQ)
+    ) uart_tx_inst(
+        .clk(clk),
+        .reset(reset),
+        .data_in(tx_msg),
+        .send(send),
+        .tx(tx),
+        .busy(tx_busy)
+    );
 
     always @(posedge clk)
     begin
@@ -50,10 +56,11 @@ module uart_dbg #(
                 if (!rd)
                 begin
                     rd <= 1;
+                    send <= 1;
                 end
                 else
                 begin
-                    send <= 1;
+                    rd <= 0;
                 end
             end
         end
@@ -64,3 +71,5 @@ module uart_dbg #(
         end
     end
 endmodule
+
+`endif

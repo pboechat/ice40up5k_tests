@@ -1,3 +1,6 @@
+`ifndef UART_RECEIVER_V
+`define UART_RECEIVER_V
+
 module uart_receiver #(
     parameter BAUD_RATE = 9_600,
     parameter SYS_CLK_FREQ = 48_000_000                     // 48 MHz
@@ -133,3 +136,5 @@ module uart_receiver #(
         end
     end
 endmodule
+
+`endif

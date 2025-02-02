@@ -1,3 +1,6 @@
+`ifndef ILI9341_VH
+`define ILI9341_VH
+
 /****************************
  *  From ILI9341 datasheet  *
  ****************************/
@@ -15,15 +18,9 @@
 `define SET_COL_ADDR_CMD        8'h2a
 `define SET_PAGE_ADDR_CMD       8'h2b
 `define MEM_WRITE_CMD           8'h2c
-
-// command parameter count
-`define SW_RESET_CMD_PCNT       0
-`define SLEEP_OUT_CMD_PCNT      0
-`define SET_PXL_FMT_CMD_PCNT    1
-`define MEM_ACC_CTR_CMD_PCNT    1
-`define DISPLAY_ON_CMD_PCNT     0
-`define SET_COL_ADDR_CMD_PCNT   4
-`define SET_PAGE_ADDR_CMD_PCNT  4
+`define READ_DISPLAY_ID_CMD     8'h04
 
 // pixel formats
 `define RGB565                  8'h55 // 16-bit RGB565
+
+`endif

@@ -146,7 +146,7 @@ module ice40_master_spi_controller_tb;
             end
             else if (step == 2)
             begin
-                assert_reg_write(`SPICR2, 8'b10000001);
+                assert_reg_write(`SPICR2, 8'b10000000);
             end
             else if (step == 3)
             begin
@@ -154,7 +154,7 @@ module ice40_master_spi_controller_tb;
             end
             else if (step == 4)
             begin
-                assert_reg_write(`SPICSR, 8'b00000000);
+                assert_reg_write(`SPICSR, 8'b00000001);
 
                 tx_data <= TX_DATA;
                 tx_start_val <= 1;
