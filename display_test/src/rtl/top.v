@@ -1,17 +1,17 @@
-`include "spi/ice40_master_spi_controller.v"
+`include "spi/master_spi_controller.v"
 `include "uart_dbg.v"
 
 module top(
     input wire reset,
-    input wire dis_reset,                   // display reset
-    input wire dc,                          // data/command
     input wire so,                          // SPI serial output
+    output wire dc,                         // data/command
+    output wire dis_reset,                  // display reset
     output wire sck,                        // SPI SCK
     output wire cs,                         // SPI chip select
     output wire si                          // SPI serial input
 `ifdef DEBUG
-    , output wire tx,                       // UART TX output
-    output wire RGB0,
+    , output wire tx                        // UART TX output
+    , output wire RGB0,
     output wire RGB1, 
     output wire RGB2
 `endif
@@ -20,101 +20,73 @@ module top(
     wire tx_busy;
     wire tx_start;
     wire[7:0] tx_data;
-    wire spi_strobe;
-    wire spi_rw;
-    wire[7:0] spi_reg_addr;
-    wire[7:0] spi_data_in;
-    wire[7:0] spi_data_out;
-    wire spi_ack;
+    wire[7:0] rx_data;
+    wire dis_cs;
+    wire spi_cs;
 `ifdef DEBUG
     reg dbg_wr;
     reg[7:0] dbg_msg;
+    reg tx_busy_seen;
     reg b, g, r;
 `endif
 
+    assign cs = dis_cs || spi_cs;
+
+    initial 
+    begin
+        tx_busy_seen <= 0;    
+    end
+
+    localparam SYS_CLK_FREQ = 12_000_000;
+
     SB_HFOSC #(
-        .CLKHF_DIV("0b10")                      // 12 MHz
+        .CLKHF_DIV("0b10")
     ) high_freq_oscillator(
         .CLKHFPU(1'b1),                         // power-up oscillator
         .CLKHFEN(1'b1),                         // enable clock output
         .CLKHF(clk)                             // clock output
     );
 
+    localparam HW_RESET_HOLD_TIMER = SYS_CLK_FREQ / (1000 / 10);            // 10 ms
+    localparam HW_RESET_RELEASE_TIMER = SYS_CLK_FREQ / (1000 / 120);        // 120 ms
+    localparam SW_RESET_TIMER = SYS_CLK_FREQ / (1000 / 10);                 // 10 ms
+    localparam SLEEP_OUT_TIMER = SYS_CLK_FREQ / (1000 / 120);               // 120 ms
+    localparam DISPLAY_ON_TIMER = SYS_CLK_FREQ / (1000 / 10);               // 10 ms
+
     display_controller #(
-        .HW_RESET_HOLD_TIMER(120_000),          // 10 ms
-        .HW_RESET_RELEASE_TIMER(1_440_000),     // 120 ms
-        .SW_RESET_TIMER(120_000),               // 10 ms
-        .SLEEP_OUT_TIMER(1_440_000),            // 120 ms
-        .DISPLAY_ON_TIMER(120_000),             // 10 ms
-        .DIS_RES_X(320),
-        .DIS_RES_Y(240),
+        .SYS_CLK_FREQ(SYS_CLK_FREQ),
+        .DIS_RES_X(240),
+        .DIS_RES_Y(320),
     ) display_controller_inst (
         .clk(clk),
         .reset(reset),
-        .tx_busy(tx_busy),
+        .busy(tx_busy),
         .dis_reset(dis_reset),
         .dc(dc),
-        .cs(cs),
-        .tx_start(tx_start),
-        .tx_data(tx_data)
+        .cs(dis_cs),
+        .start(tx_start),
+        .data_out(tx_data),
+        .data_in(rx_data)
     );
 
-    SB_SPI #(
-        .BUS_ADDR74("0b0000")               // lower left SPI hard IP
-    ) SB_SPI_inst(
-        .SBCLKI(clk),                       // system clock
-        .SBSTBI(spi_strobe),                // strobe signal
-        .SBRWI(spi_rw),                     // read/write signal
-        .SBADRI0(spi_reg_addr[0]),          // register address bit 0
-        .SBADRI1(spi_reg_addr[1]),          // register address bit 1
-        .SBADRI2(spi_reg_addr[2]),          // register address bit 2
-        .SBADRI3(spi_reg_addr[3]),          // register address bit 3
-        .SBADRI4(spi_reg_addr[4]),          // register address bit 4
-        .SBADRI5(spi_reg_addr[5]),          // register address bit 5
-        .SBADRI6(spi_reg_addr[6]),          // register address bit 6
-        .SBADRI7(spi_reg_addr[7]),          // register address bit 7
-        .SBDATI0(spi_data_in[0]), 
-        .SBDATI1(spi_data_in[1]), 
-        .SBDATI2(spi_data_in[2]), 
-        .SBDATI3(spi_data_in[3]), 
-        .SBDATI4(spi_data_in[4]), 
-        .SBDATI5(spi_data_in[5]), 
-        .SBDATI6(spi_data_in[6]), 
-        .SBDATI7(spi_data_in[7]),
-        .SBDATO0(spi_data_out[0]), 
-        .SBDATO1(spi_data_out[1]), 
-        .SBDATO2(spi_data_out[2]), 
-        .SBDATO3(spi_data_out[3]), 
-        .SBDATO4(spi_data_out[4]), 
-        .SBDATO5(spi_data_out[5]), 
-        .SBDATO6(spi_data_out[6]), 
-        .SBDATO7(spi_data_out[7]),
-        .SBACKO(spi_ack),                   // system acknowledgement
-        .MO(si),                            // master-out
-        .MI(so),                            // master-in
-        .SCKI(clk),
-        .SCKO(sck)                          // sck
-    );
-
-    ice40_master_spi_controller #(
-        .SPI_CLK_DIVIDER(0)                 // 12 / (1+1) = 6 MHz
-    ) spi_controller_inst(
+    master_spi_controller #(
+        .CLK_DIVIDER(3)
+    ) master_spi_controller_inst (
         .clk(clk),
         .reset(reset),
-        .tx_start(tx_start),
-        .tx_data(tx_data),
-        .spi_data_out(spi_data_out),
-        .spi_ack(spi_ack),
-        .spi_rw(spi_rw),
-        .spi_reg_addr(spi_reg_addr),
-        .spi_strobe(spi_strobe),
-        .spi_data_in(spi_data_in),
-        .tx_busy(tx_busy)
+        .start(tx_start),
+        .data_in(tx_data),
+        .data_out(rx_data),
+        .busy(tx_busy),
+        .cs(spi_cs),
+        .sck(sck),
+        .mosi(si),
+        .miso(so)
     );
 
 `ifdef DEBUG
     uart_dbg #(
-        .SYS_CLK_FREQ(12_000_000),
+        .SYS_CLK_FREQ(SYS_CLK_FREQ),
         .BAUD_RATE(115_200),
         .MSG_QUEUE_SIZE(32)
     ) uart_dbg_inst (
@@ -139,13 +111,20 @@ module top(
             b <= 0;
             g <= 1;
             r <= 0;
-            
-            if (spi_ack && !spi_rw)
+            if (tx_busy)
             begin
-                dbg_wr <= 1;
-                dbg_msg <= spi_data_out;
+                tx_busy_seen <= 1;
             end
-            else
+            else if (tx_busy_seen)
+            begin
+                if (dbg_msg != rx_data)
+                begin
+                    dbg_msg <= rx_data;
+                    dbg_wr <= 1;
+                end
+                tx_busy_seen <= 0;
+            end
+            else if (dbg_wr)
             begin
                 dbg_wr <= 0;
             end

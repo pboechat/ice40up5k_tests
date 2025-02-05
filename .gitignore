@@ -11,3 +11,5 @@ __pycache__/
 
 # value change dumps
 *.vcd
+
+yosys.log

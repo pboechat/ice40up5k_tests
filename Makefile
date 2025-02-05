@@ -25,7 +25,10 @@ synth:
 
 	@mkdir -p $(OUT_DIR)/$(PROJECT)
 	
-	$(SYNTH) -p "verilog_defines -D DEBUG; read_verilog -I common/src/rtl $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json"
+	set -e
+	$(SYNTH) -Wall -p "setattr -mod -set error_on_warning 1; verilog_defines -D DEBUG; read_verilog -I common/src/rtl $(SRC_DIR)/*.v; synth_ice40 -top $(TOP_MODULE); write_json $(OUT_DIR)/$(PROJECT)/synth.json" 2>&1 | tee yosys.log 
+	@if grep -i "Warning:" yosys.log | grep -v "ABC: Warning:" | grep -v "Found log message matching"; then exit 1; fi
+	! grep -i "ERROR:" yosys.log
 
 pnr:
 	@echo ""

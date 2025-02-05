@@ -6,8 +6,8 @@
  ****************************/
 
 // d/c bits
-`define DATA_BIT                1'b0
-`define COMMAND_BIT             1'b1
+`define COMMAND_BIT             1'b0
+`define DATA_BIT                1'b1
 
 // commands
 `define SW_RESET_CMD            8'h01
@@ -18,7 +18,7 @@
 `define SET_COL_ADDR_CMD        8'h2a
 `define SET_PAGE_ADDR_CMD       8'h2b
 `define MEM_WRITE_CMD           8'h2c
-`define READ_DISPLAY_ID_CMD     8'h04
+`define READ_DISPLAY_STATUS_CMD 8'h09
 
 // pixel formats
 `define RGB565                  8'h55 // 16-bit RGB565
