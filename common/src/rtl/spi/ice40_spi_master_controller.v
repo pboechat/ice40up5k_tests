@@ -1,9 +1,9 @@
-`ifndef ICE40_MASTER_SPI_CONTROLLER_V
-`define ICE40_MASTER_SPI_CONTROLLER_V
+`ifndef ICE40_SPI_MASTER_CONTROLLER_V
+`define ICE40_SPI_MASTER_CONTROLLER_V
 
 `include "spi/ice40_spi.vh"
 
-module ice40_master_spi_controller #(
+module ice40_spi_master_controller #(
     parameter CLK_DIVIDER = 0
 ) (
     input wire clk,

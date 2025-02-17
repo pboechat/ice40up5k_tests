@@ -1,4 +1,7 @@
-module master_spi_controller #(
+`ifndef SPI_MASTER_CONTROLLER_V
+`define SPI_MASTER_CONTROLLER_V
+
+module spi_master_controller #(
     parameter CLK_DIVIDER = 1
 ) (
     input wire clk,
@@ -121,3 +124,5 @@ module master_spi_controller #(
         end
     end
 endmodule
+
+`endif

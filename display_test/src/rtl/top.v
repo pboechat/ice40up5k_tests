@@ -1,7 +1,6 @@
-`include "spi/master_spi_controller.v"
+`include "ili9341/ili9341_spi_controller.v"
+`include "spi/spi_master_controller.v"
 `include "uart_dbg.v"
-`include "single_port_ram.v"
-`include "ili9341.vh"
 
 module top(
     input wire reset,
@@ -142,12 +141,12 @@ module top(
         end
     end
 
-    display_controller #(
+    ili9341_spi_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
         .DISPLAY_X(DISPLAY_X),
         .DISPLAY_Y(DISPLAY_Y),
         .DOWNSCALE_SHIFT(DOWNSCALE_SHIFT)
-    ) display_controller_inst (
+    ) ili9341_spi_controller_inst (
         .clk(clk),
         .reset(reset),
         .spi_busy(spi_busy),
@@ -166,9 +165,9 @@ module top(
 `endif
     );
 
-    master_spi_controller #(
+    spi_master_controller #(
         .CLK_DIVIDER(SPI_CLK_DIVIDER)
-    ) master_spi_controller_inst (
+    ) spi_master_controller_inst (
         .clk(clk),
         .reset(reset),
         .start(spi_start),

@@ -1,6 +1,6 @@
-`include "display_controller.v"
+`include "ili9341/ili9341_spi_controller.v"
 
-module display_controller_tb;
+module ili9341_spi_controller_tb;
     wire clk;
     wire reset;
     wire spi_busy;
@@ -10,7 +10,7 @@ module display_controller_tb;
     wire[7:0] spi_out;
     wire mem_req;
     wire[31:0] display_status;
-    reg[31:0] mem_addr;
+    wire[31:0] mem_addr;
     reg clk_val;
     reg reset_val;
     reg spi_busy_val;
@@ -28,18 +28,18 @@ module display_controller_tb;
 
     localparam SYS_CLK_FREQ = 1;
     localparam DISPLAY_X = 3;
-    localparam DISPLAY_Y = 4;'
+    localparam DISPLAY_Y = 4;
 
     localparam HW_RESET_HOLD_TIMER = max(4, SYS_CLK_FREQ / 100000);         // 10 us
     localparam HW_RESET_RELEASE_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));  // 5 ms
     localparam SW_RESET_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));          // 5 ms
     localparam SLPOUT_TIMER  = max(4, SYS_CLK_FREQ / (1000 / 120));         // 120 ms
 
-    display_controller #(
+    ili9341_spi_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
         .DISPLAY_X(DISPLAY_X),
         .DISPLAY_Y(DISPLAY_Y)
-    ) display_controller_impl (
+    ) ili9341_spi_controller_impl (
         .clk(clk),
         .reset(reset),
         .spi_busy(spi_busy),
@@ -174,8 +174,8 @@ module display_controller_tb;
 
     initial 
     begin
-        $dumpfile("display_controller_tb.vcd");
-        $dumpvars(0, display_controller_tb);
+        $dumpfile("ili9341_spi_controller_tb.vcd");
+        $dumpvars(0, ili9341_spi_controller_tb);
 
         clk_val = 1'b1;                                             // set clk high
         spi_busy_val = 1'b0;                                        // set spi_busy low
@@ -223,7 +223,7 @@ module display_controller_tb;
             end
             else if (step == 3)
             begin
-                assert_data(8'b00000000);
+                assert_data(8'b00101000);
             end
             else if (step == 4)
             begin

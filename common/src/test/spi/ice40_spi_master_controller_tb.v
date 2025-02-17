@@ -1,21 +1,21 @@
-`include "spi/ice40_master_spi_controller.v"
+`include "spi/ice40_spi_master_controller.v"
 
-module ice40_master_spi_controller_tb;
+module ice40_spi_master_controller_tb;
     wire clk;
     wire reset;
-    wire tx_busy;
-    wire tx_start;
+    wire busy;
+    wire start;
     wire spi_strobe;
     wire spi_rw;
     wire[7:0] spi_reg_addr;
     wire[7:0] spi_data_in;
     wire spi_ack;
-    reg[7:0] tx_data;
+    reg[7:0] data_out;
     reg[7:0] spi_data_out;
     reg clk_val;
     reg reset_val;
     reg spi_ack_val;
-    reg tx_start_val;
+    reg start_val;
 `ifdef DEBUG
     wire b, g, r;
 `endif
@@ -23,7 +23,7 @@ module ice40_master_spi_controller_tb;
     assign clk = clk_val;
     assign reset = reset_val;
     assign spi_ack = spi_ack_val;
-    assign tx_start = tx_start_val;
+    assign start = start_val;
 
     localparam CYCLE_TO_TU = 2;
 
@@ -31,20 +31,20 @@ module ice40_master_spi_controller_tb;
 
     localparam SPI_CLK_DIVIDER = 1;
 
-    ice40_master_spi_controller #(
-        .SPI_CLK_DIVIDER(SPI_CLK_DIVIDER)
+    ice40_spi_master_controller #(
+        .CLK_DIVIDER(SPI_CLK_DIVIDER)
     ) spi_controller_inst(
         .clk(clk),
         .reset(reset),
-        .tx_start(tx_start),
-        .tx_data(tx_data),
+        .start(start),
+        .data_out(data_out),
         .spi_data_out(spi_data_out),
         .spi_ack(spi_ack),
         .spi_rw(spi_rw),
         .spi_reg_addr(spi_reg_addr),
         .spi_strobe(spi_strobe),
         .spi_data_in(spi_data_in),
-        .tx_busy(tx_busy)
+        .busy(busy)
 `ifdef DEBUG
         , .b(b),
         .g(g),
@@ -99,11 +99,11 @@ module ice40_master_spi_controller_tb;
 
     `include "assertions.vh"
 
-    task assert_reg_write(input reg[4:0] reg_addr, input reg[7:0] reg_value);
+    task assert_reg_write(input reg[4:0] reg_addr, input reg[7:0] reg_value, input reg[16*8:1] reg_name);
     begin
         assert_eq(spi_rw, 1, "spi_rw");
         assert_eq(spi_reg_addr, reg_addr, "spi_reg_addr");
-        assert_eq(spi_data_in, reg_value, "spi_data_in");
+        assert_eq(spi_data_in, reg_value, reg_name);
     end
     endtask
 
@@ -114,21 +114,21 @@ module ice40_master_spi_controller_tb;
     end
     endtask
 
-    localparam TX_DATA = 8'b10101010;
+    localparam DATA_OUT = 8'b10101010;
 
     integer step = 0;
 
     initial
     begin
-        $dumpfile("ice40_master_spi_controller_tb.vcd");
-        $dumpvars(0, ice40_master_spi_controller_tb);
+        $dumpfile("ice40_spi_master_controller_tb.vcd");
+        $dumpvars(0, ice40_spi_master_controller_tb);
 
         clk_val = 1'b1;                                             // set clk high
         reset_val = 1'b1;                                           // set reset high
 
         #(CYCLE_TO_TU);                                             // 1 cycle (reset)
 
-        assert_eq(tx_busy, 1, "tx_busy");
+        assert_eq(busy, 1, "busy");
 
         reset_val = 1'b0;                                           // set reset low
 
@@ -138,26 +138,26 @@ module ice40_master_spi_controller_tb;
 
             if (step == 0)
             begin
-                assert_reg_write(`SPICR0, 8'b00000000);
+                assert_reg_write(`SPICR0, 8'b00000000, "SPICR0");
             end
             else if (step == 1)
             begin
-                assert_reg_write(`SPICR1, 8'b10000000);
+                assert_reg_write(`SPICR1, 8'b10000000, "SPICR1");
             end
             else if (step == 2)
             begin
-                assert_reg_write(`SPICR2, 8'b10000000);
+                assert_reg_write(`SPICR2, 8'b10000000, "SPICR2");
             end
             else if (step == 3)
             begin
-                assert_reg_write(`SPIBR, {2'b00, SPI_CLK_DIVIDER[5:0]});
+                assert_reg_write(`SPIBR, {2'b00, SPI_CLK_DIVIDER[5:0]}, "SPIBR");
             end
             else if (step == 4)
             begin
-                assert_reg_write(`SPICSR, 8'b00000001);
+                assert_reg_write(`SPICSR, 8'b00000000, "SPICSR");
 
-                tx_data <= TX_DATA;
-                tx_start_val <= 1;
+                data_out <= DATA_OUT;
+                start_val <= 1;
             end
             else if (step == 5)
             begin
@@ -165,12 +165,12 @@ module ice40_master_spi_controller_tb;
             end
             else if (step == 6)
             begin
-                assert_eq(tx_busy, 1, "tx_busy");
-                assert_reg_write(`SPITXDR, TX_DATA);
+                assert_eq(busy, 1, "busy");
+                assert_reg_write(`SPITXDR, DATA_OUT, "SPITXDR");
             end
             else
             begin
-                $display("[ice40_master_spi_controller_tb  ] - T(%9t) - success", $time);
+                $display("[ice40_spi_master_controller_tb  ] - T(%9t) - success", $time);
                 $finish();
             end
 

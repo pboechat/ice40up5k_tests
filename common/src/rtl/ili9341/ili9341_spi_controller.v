@@ -1,4 +1,7 @@
-`include "ili9341.vh"
+`ifndef ILI9341_SPI_CONTROLLER_V
+`define ILI9341_SPI_CONTROLLER_V
+
+`include "ili9341/ili9341.vh"
 
 module pixel_mem_addr_translator #(
     parameter DISPLAY_X = 1,                      // horizontal resolution
@@ -98,7 +101,7 @@ module pixel_mem_addr_translator #(
     end
 endmodule
 
-module display_controller #(
+module ili9341_spi_controller #(
     parameter SYS_CLK_FREQ = 1,
     parameter DISPLAY_X = 1,                      // horizontal resolution
     parameter DISPLAY_Y = 1,                      // vertical resolution
@@ -115,7 +118,7 @@ module display_controller #(
     output reg cs,                                 // display cs
     output reg spi_start,
     output reg[7:0] spi_out,
-    output reg[31:0] mem_addr,
+    output wire[31:0] mem_addr,
     output reg mem_req,
     output reg[31:0] display_status
 );
@@ -808,3 +811,5 @@ module display_controller #(
         end
     end
 endmodule
+
+`endif
