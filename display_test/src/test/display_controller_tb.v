@@ -3,49 +3,55 @@
 module display_controller_tb;
     wire clk;
     wire reset;
-    wire tx_busy;
+    wire spi_busy;
     wire dis_reset;
     wire dc;
-    wire tx_start;
-    wire[7:0] tx_data;
+    wire spi_start;
+    wire[7:0] spi_out;
+    wire[31:0] mem_addr;
+    wire mem_req;
+    wire[31:0] display_status;
     reg clk_val;
     reg reset_val;
-    reg tx_busy_val;
+    reg spi_busy_val;
+    reg[7:0] spi_in;
+    reg[7:0] mem_in;
+    reg mem_ready;
+
+    `include "functions.vh"
 
     assign clk = clk_val;
     assign reset = reset_val;
-    assign tx_busy = tx_busy_val;
-
-    localparam CYCLE_TO_TU = 2;
+    assign spi_busy = spi_busy_val;
 
     always #1 clk_val = ~clk_val;
 
-    localparam DIS_RES_X = 4;
-    localparam END_COL = DIS_RES_X - 1;
-    localparam DIS_RES_Y = 3;
-    localparam END_PAGE = DIS_RES_Y - 1;
-    localparam HW_RESET_HOLD_TIMER = 4;
-    localparam HW_RESET_RELEASE_TIMER = 100;
-    localparam SW_RESET_TIMER = 4;
-    localparam SLEEP_OUT_TIMER = 100;
-    localparam DISPLAY_ON_TIMER = 8;
+    localparam SYS_CLK_FREQ = 1;
+    localparam DIS_RES_X = 3;
+    localparam DIS_RES_Y = 4;
+    localparam HW_RESET_HOLD_TIMER = max(4, SYS_CLK_FREQ / 100000);         // 10 us
+    localparam HW_RESET_RELEASE_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));  // 5 ms
+    localparam SW_RESET_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));          // 5 ms
+    localparam SLPOUT_TIMER  = max(4, SYS_CLK_FREQ / (1000 / 120));         // 120 ms
 
     display_controller #(
+        .SYS_CLK_FREQ(SYS_CLK_FREQ),
         .DIS_RES_X(DIS_RES_X),
-        .DIS_RES_Y(DIS_RES_Y),
-        .HW_RESET_HOLD_TIMER(HW_RESET_HOLD_TIMER),
-        .HW_RESET_RELEASE_TIMER(HW_RESET_RELEASE_TIMER),
-        .SW_RESET_TIMER(SW_RESET_TIMER),
-        .SLEEP_OUT_TIMER(SLEEP_OUT_TIMER),
-        .DISPLAY_ON_TIMER(DISPLAY_ON_TIMER)
+        .DIS_RES_Y(DIS_RES_Y)
     ) display_controller_impl (
         .clk(clk),
         .reset(reset),
-        .tx_busy(tx_busy),
+        .spi_busy(spi_busy),
+        .spi_in(spi_in),
+        .mem_in(mem_in),
+        .mem_ready(mem_ready),
         .dis_reset(dis_reset),
         .dc(dc),
-        .tx_start(tx_start),
-        .tx_data(tx_data)
+        .spi_start(spi_start),
+        .spi_out(spi_out),
+        .mem_addr(mem_addr),
+        .mem_req(mem_req),
+        .display_status(display_status)
     );
     
     integer cycle_count = 0;
@@ -57,34 +63,69 @@ module display_controller_tb;
 
     // master spi controller mock
     
-    localparam TX_BUSY_TIMER = 4;
+    localparam SPI_BUSY_TIMER = 4;
     
-    reg[$clog2(TX_BUSY_TIMER)-1:0] tx_busy_timer = 0;
+    reg[$clog2(SPI_BUSY_TIMER)-1:0] spi_busy_timer = 0;
 
     always @(posedge clk)
     begin
-        if (tx_busy)
+        if (spi_busy)
         begin
-            if (tx_busy_timer == 0)
+            if (spi_busy_timer == 0)
             begin
-                tx_busy_val <= 1'b0;
+                spi_in <= 8'b10101010;
+                spi_busy_val <= 1'b0;
             end
             else
             begin
-                tx_busy_timer <= tx_busy_timer - 1;
+                spi_busy_timer <= spi_busy_timer - 1;
             end
         end
         else
         begin
-            if (tx_start)
+            if (spi_start)
             begin
-                tx_busy_val <= 1'b1;
-                tx_busy_timer <= TX_BUSY_TIMER - 1;
+                spi_busy_val <= 1'b1;
+                spi_busy_timer <= spi_busy_timer - 1;
             end
         end
     end
 
-    event dis_reset_hi_evt, dis_reset_lo_evt, tx_start_hi_evt;
+    // memory controller mock
+
+    localparam RED = {5'b11111, 6'b000000, 5'b00000};
+    localparam GREEN = {5'b00000, 6'b111111, 5'b00000};
+    localparam BLUE = {5'b00000, 6'b000000, 5'b11111};
+
+    function integer next_pixel_byte(input integer idx);
+        case (idx % 6)
+            0:
+                next_pixel_byte = RED[15:8];
+            1:
+                next_pixel_byte = RED[7:0];
+            2:
+                next_pixel_byte = GREEN[15:8];
+            3:
+                next_pixel_byte = GREEN[7:0];
+            4:
+                next_pixel_byte = BLUE[15:8];
+            5:
+                next_pixel_byte = BLUE[7:0];
+        endcase
+    endfunction
+
+    always @(posedge clk)
+    begin
+        mem_ready <= 0;
+
+        if (mem_req)
+        begin
+            mem_in <= next_pixel_byte(mem_addr);
+            mem_ready <= 1;
+        end
+    end
+
+    event dis_reset_hi_evt, dis_reset_lo_evt, spi_start_hi_evt;
     always @(posedge dis_reset) 
     begin
         -> dis_reset_hi_evt;
@@ -93,24 +134,24 @@ module display_controller_tb;
     begin
         -> dis_reset_lo_evt;
     end
-    always @(posedge tx_start) 
+    always @(posedge spi_start) 
     begin
-        -> tx_start_hi_evt;
+        -> spi_start_hi_evt;
     end
 
     `include "assertions.vh"
 
-    task asset_command(input reg[7:0] command);
+    task assert_command(input reg[7:0] command);
     begin
         assert_eq(dc, `COMMAND_BIT, "dc");
-        assert_eq(tx_data, command, "tx_data");
+        assert_eq(spi_out, command, "command");
     end
     endtask
 
-    task asset_data(input reg[7:0] data);
+    task assert_data(input reg[7:0] data);
     begin
         assert_eq(dc, `DATA_BIT, "dc");
-        assert_eq(tx_data, data, "tx_data");
+        assert_eq(spi_out, data, "data");
     end
     endtask
 
@@ -128,9 +169,7 @@ module display_controller_tb;
     end
     endtask
 
-    localparam PIXEL_BYTE_COUNT = DIS_RES_X * DIS_RES_Y * 2;
-
-    integer pixel_byte_count = 0;
+    localparam SCREEN_BUF_SIZE = DIS_RES_X * DIS_RES_Y * 2;
 
     initial 
     begin
@@ -138,10 +177,10 @@ module display_controller_tb;
         $dumpvars(0, display_controller_tb);
 
         clk_val = 1'b1;                                             // set clk high
-        tx_busy_val = 1'b0;                                         // set tx_busy low
+        spi_busy_val = 1'b0;                                        // set spi_busy low
         reset_val = 1'b1;                                           // set reset high
 
-        #(CYCLE_TO_TU);                                             // 1 cycle (reset)
+        @(posedge clk);
 
         assert_eq(dis_reset, 1, "dis_reset");
 
@@ -155,87 +194,96 @@ module display_controller_tb;
 
         stop_cycle_rec;
 
-        assert_eq(elapsed_cycles, HW_RESET_HOLD_TIMER, "elapsed_cycles");
+        assert_eq(elapsed_cycles, HW_RESET_HOLD_TIMER, "HW_RESET_HOLD_TIMER");
 
         forever 
         begin
-            @(tx_start_hi_evt);
+            @(spi_start_hi_evt);
 
             if (step == 0)
             begin
                 stop_cycle_rec;
-                assert_gt(elapsed_cycles, HW_RESET_RELEASE_TIMER, "elapsed_cycles");
-                asset_command(`SW_RESET_CMD);
+                assert_gt(elapsed_cycles, HW_RESET_RELEASE_TIMER, "HW_RESET_RELEASE_TIMER");
+                assert_command(`SW_RESET_CMD);
                 start_cycle_rec;
             end
             else if (step == 1)
             begin
                 stop_cycle_rec;
-                assert_gt(elapsed_cycles, SW_RESET_TIMER, "elapsed_cycles");
-                asset_command(`SLEEP_OUT_CMD);
+                assert_gt(elapsed_cycles, SW_RESET_TIMER, "SW_RESET_TIMER");
+                assert_command(`SLPOUT_CMD);
+                start_cycle_rec;
             end
             else if (step == 2)
             begin
-                asset_command(`SET_PXL_FMT_CMD);
+                stop_cycle_rec;
+                assert_gt(elapsed_cycles, SLPOUT_TIMER, "SLPOUT_TIMER");
+                assert_command(`MADCTL_CMD);
+            end
+            else if (step == 3)
+            begin
+                assert_data(8'b00000000);
             end
             else if (step == 4)
             begin
-                asset_command(`MEM_ACC_CTR_CMD);
+                assert_command(`COLMOD_CMD);
+            end
+            else if (step == 5)
+            begin
+               assert_data(8'h55);
             end
             else if (step == 6)
             begin
-                asset_command(`DISPLAY_ON_CMD);
-                start_cycle_rec;
+                assert_command(`DISPON_CMD);
             end
             else if (step == 7)
             begin
-                stop_cycle_rec;
-                assert_gt(elapsed_cycles, DISPLAY_ON_TIMER, "elapsed_cycles");
-                asset_command(`SET_COL_ADDR_CMD);
+                assert_command(`READ_DISPLAY_STATUS_CMD);
             end
-            else if (step == 8 || step == 9)
+            else if (step == 13)
             begin
-                asset_data(8'h00);
+                assert_eq(display_status, 32'b10101010101010101010101010101010, "display_status");
+                assert_command(`CASET_CMD);
             end
-            else if (step == 10)
+            else if (step == 14 || step == 15)
             begin
-                asset_data(END_COL[15:8]);
-            end
-            else if (step == 11)
-            begin
-                asset_data(END_COL[7:0]);
-            end
-            else if (step == 12)
-            begin
-                asset_command(`SET_PAGE_ADDR_CMD);
-            end
-            else if (step == 13 || step == 14)
-            begin
-                asset_data(8'h00);
-            end
-            else if (step == 15)
-            begin
-                asset_data(END_PAGE[15:8]);
+                assert_data(8'h00);
             end
             else if (step == 16)
             begin
-                asset_data(END_PAGE[7:0]);
+                assert_data(DIS_RES_X[15:8]);
             end
             else if (step == 17)
             begin
-                asset_command(`MEM_WRITE_CMD);
+                assert_data(DIS_RES_X[7:0]);
             end
-            else if (step >= 18)
+            else if (step == 18)
             begin
-                asset_data(pixel_byte_count % 2 == 0 ? 8'hf8 : 8'h00);
-                if (pixel_byte_count == PIXEL_BYTE_COUNT - 1)
+                assert_command(`PASET_CMD);
+            end
+            else if (step == 19 || step == 20)
+            begin
+                assert_data(8'h00);
+            end
+            else if (step == 21)
+            begin
+                assert_data(DIS_RES_Y[15:8]);
+            end
+            else if (step == 22)
+            begin
+                assert_data(DIS_RES_Y[7:0]);
+            end
+            else if (step == 23)
+            begin
+                assert_command(`MEMWRITE_CMD);
+            end
+            else if (step >= 24)
+            begin
+                assert_data(next_pixel_byte(mem_addr));
+                if (mem_addr == (SCREEN_BUF_SIZE - 1))
                 begin
                     $display("[display_controller_tb           ] - T(%9t) - success", $time);
                     $finish();
-                end
-                else
-                begin
-                    pixel_byte_count = pixel_byte_count + 1;
                 end
             end
 

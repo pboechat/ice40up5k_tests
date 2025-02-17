@@ -21,10 +21,10 @@ module uart_transmitter #(
     localparam TMT_DATA_BITS = 2'b10;
     localparam TMT_STOP_BIT  = 2'b11;
 
-    reg [1:0] state = IDLE;
-    reg [7:0] shift_reg = 0; // data being transmitted
-    reg [$clog2(BIT_PERIOD)-1:0] timer = 0;
-    reg [2:0] bit_index = 0; // tracks which data bit is being transmitted
+    reg[1:0] state = IDLE;
+    reg[7:0] shift_reg = 0; // data being transmitted
+    reg[$clog2(BIT_PERIOD)-1:0] timer = 0;
+    reg[2:0] bit_index = 0; // tracks which data bit is being transmitted
 
     always @(posedge clk) 
     begin

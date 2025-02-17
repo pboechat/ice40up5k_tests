@@ -21,22 +21,22 @@ module master_spi_controller #(
         if (reset) 
         begin
             timer <= 0;
-            sck <= clk;
+            sck <= 0;
             clk_phase <= 0;
             sck_tick <= 0;
         end 
         else 
         begin
-            if (timer == 0) 
+            if (timer == (CLK_DIVIDER - 1)) 
             begin
-                timer <= CLK_DIVIDER - 1;
+                timer <= 0;
                 sck <= ~sck;
                 clk_phase <= ~clk_phase;
                 sck_tick <= 1;
             end 
             else 
             begin
-                timer <= timer - 1;
+                timer <= timer + 1;
                 sck_tick <= 0;
             end
         end

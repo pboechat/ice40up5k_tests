@@ -20,10 +20,10 @@ module uart_receiver #(
     localparam RCV_DATA_BITS  = 2'b10;
     localparam RCV_STOP_BIT   = 2'b11;
 
-    reg [1:0] state = IDLE;
-    reg [$clog2(BIT_PERIOD)-1:0] timer = 0;
-    reg [3:0] bit_index = 0;                                // tracks which data bit is being received
-    reg [7:0] shift_reg = 0;                                // data being received
+    reg[1:0] state = IDLE;
+    reg[$clog2(BIT_PERIOD)-1:0] timer = 0;
+    reg[3:0] bit_index = 0;                                // tracks which data bit is being received
+    reg[7:0] shift_reg = 0;                                // data being received
 
     always@(posedge clk) 
     begin

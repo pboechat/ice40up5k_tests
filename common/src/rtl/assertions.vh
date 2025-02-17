@@ -1,4 +1,4 @@
-task assert_eq(input integer got, input integer expected, input reg[16*8:1] var_name);
+task assert_eq(input integer got, input integer expected, input reg[32*8:1] var_name);
 begin
     if (got != expected)
     begin
@@ -8,7 +8,7 @@ begin
 end
 endtask
 
-task assert_gt(input integer got, input integer expected, input reg[16*8:1] var_name);
+task assert_gt(input integer got, input integer expected, input reg[32*8:1] var_name);
 begin
     if (got < expected)
     begin

@@ -1,5 +1,7 @@
 `include "spi/master_spi_controller.v"
 `include "uart_dbg.v"
+`include "single_port_ram.v"
+`include "ili9341.vh"
 
 module top(
     input wire reset,
@@ -17,56 +19,110 @@ module top(
 `endif
 );
     wire clk;
-    wire tx_busy;
-    wire tx_start;
-    wire[7:0] tx_data;
-    wire[7:0] rx_data;
-    wire dis_cs;
-    wire spi_cs;
+    wire spi_busy;
+    wire spi_start;
+    wire[7:0] spi_in;
+    wire[7:0] spi_out;
+    wire[31:0] mem_addr;
+    wire mem_req;
+    wire cs_dis;
+    wire cs_spi;
+    reg mem_ready;
+    reg[7:0] mem_out;
 `ifdef DEBUG
+    wire[31:0] display_status;
     reg dbg_wr;
     reg[7:0] dbg_msg;
-    reg tx_busy_seen;
+    reg[31:0] last_seen_display_status;
+    reg[2:0] display_status_tx_step;
     reg b, g, r;
 `endif
 
-    assign cs = dis_cs || spi_cs;
+    assign cs = cs_dis | cs_spi;
 
     initial 
     begin
-        tx_busy_seen <= 0;    
+`ifdef DEBUG
+        last_seen_display_status <= `INVALID_DISPLAY_STATUS;
+        display_status_tx_step <= 0;
+`endif    
     end
 
     localparam SYS_CLK_FREQ = 12_000_000;
 
+    localparam DIS_RES_X = 320;
+    localparam DIS_RES_Y = 240;
+
     SB_HFOSC #(
         .CLKHF_DIV("0b10")
     ) high_freq_oscillator(
-        .CLKHFPU(1'b1),                         // power-up oscillator
-        .CLKHFEN(1'b1),                         // enable clock output
-        .CLKHF(clk)                             // clock output
+        .CLKHFPU(1'b1), // power-up oscillator
+        .CLKHFEN(1'b1), // enable clock output
+        .CLKHF(clk)     // clock output
     );
 
-    localparam HW_RESET_HOLD_TIMER = SYS_CLK_FREQ / (1000 / 10);            // 10 ms
-    localparam HW_RESET_RELEASE_TIMER = SYS_CLK_FREQ / (1000 / 120);        // 120 ms
-    localparam SW_RESET_TIMER = SYS_CLK_FREQ / (1000 / 10);                 // 10 ms
-    localparam SLEEP_OUT_TIMER = SYS_CLK_FREQ / (1000 / 120);               // 120 ms
-    localparam DISPLAY_ON_TIMER = SYS_CLK_FREQ / (1000 / 10);               // 10 ms
+    // memory controller mock
+
+    localparam RED = {5'b11111, 6'b000000, 5'b00000};
+    localparam GREEN = {5'b00000, 6'b111111, 5'b00000};
+    localparam BLUE = {5'b00000, 6'b000000, 5'b11111};
+    localparam YELLOW = {5'b11111, 6'b111111, 5'b00000};
+    localparam CYAN = {5'b00000, 6'b111111, 5'b11111};
+
+    always @(posedge clk)
+    begin
+        mem_ready <= 0;
+
+        if (mem_req)
+        begin
+            if (mem_addr[17])
+            begin
+                mem_out <= mem_addr[0] ? CYAN[7:0] : CYAN[15:8];
+            end
+            else if (mem_addr[16])
+            begin
+                if (mem_addr[15])
+                begin
+                    mem_out <= mem_addr[0] ? BLUE[7:0] : BLUE[15:8];
+                end
+                else
+                begin
+                    mem_out <= mem_addr[0] ? YELLOW[7:0] : YELLOW[15:8];
+                end
+            end
+            else if (mem_addr[15])
+            begin
+                mem_out <= mem_addr[0] ? GREEN[7:0] : GREEN[15:8];
+            end
+            else
+            begin
+                mem_out <= mem_addr[0] ? RED[7:0] : RED[15:8];
+            end
+            mem_ready <= 1;
+        end
+    end
 
     display_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
-        .DIS_RES_X(240),
-        .DIS_RES_Y(320),
+        .DIS_RES_X(DIS_RES_X),
+        .DIS_RES_Y(DIS_RES_Y),
     ) display_controller_inst (
         .clk(clk),
         .reset(reset),
-        .busy(tx_busy),
+        .spi_busy(spi_busy),
+        .spi_in(spi_out),
+        .mem_in(mem_out),
+        .mem_ready(mem_ready),
         .dis_reset(dis_reset),
         .dc(dc),
-        .cs(dis_cs),
-        .start(tx_start),
-        .data_out(tx_data),
-        .data_in(rx_data)
+        .cs(cs_dis),
+        .spi_start(spi_start),
+        .spi_out(spi_in),
+        .mem_req(mem_req),
+        .mem_addr(mem_addr)
+`ifdef DEBUG
+        , .display_status(display_status)
+`endif
     );
 
     master_spi_controller #(
@@ -74,11 +130,11 @@ module top(
     ) master_spi_controller_inst (
         .clk(clk),
         .reset(reset),
-        .start(tx_start),
-        .data_in(tx_data),
-        .data_out(rx_data),
-        .busy(tx_busy),
-        .cs(spi_cs),
+        .start(spi_start),
+        .data_in(spi_in),
+        .data_out(spi_out),
+        .busy(spi_busy),
+        .cs(cs_spi),
         .sck(sck),
         .mosi(si),
         .miso(so)
@@ -88,7 +144,7 @@ module top(
     uart_dbg #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
         .BAUD_RATE(115_200),
-        .MSG_QUEUE_SIZE(32)
+        .MSG_QUEUE_SIZE(8)
     ) uart_dbg_inst (
         .clk(clk),
         .reset(reset),
@@ -97,7 +153,6 @@ module top(
         .tx(tx)
     );
 
-    // debug data being transmitted over SPI
     always @(posedge clk)
     begin
         if (reset)
@@ -111,22 +166,44 @@ module top(
             b <= 0;
             g <= 1;
             r <= 0;
-            if (tx_busy)
+            if (last_seen_display_status != display_status)
             begin
-                tx_busy_seen <= 1;
-            end
-            else if (tx_busy_seen)
-            begin
-                if (dbg_msg != rx_data)
+                if (dbg_wr == 0)
                 begin
-                    dbg_msg <= rx_data;
-                    dbg_wr <= 1;
+                    if (display_status_tx_step == 0)
+                    begin
+                        dbg_msg <= display_status[31:24];
+                        display_status_tx_step <= 1;
+                        dbg_wr <= 1;
+                    end
+                    else if (display_status_tx_step == 1)
+                    begin
+                        dbg_msg <= display_status[23:16];
+                        display_status_tx_step <= 2;
+                        dbg_wr <= 1;
+                    end
+                    else if (display_status_tx_step == 2)
+                    begin
+                        dbg_msg <= display_status[15:8];
+                        display_status_tx_step <= 3;
+                        dbg_wr <= 1;
+                    end
+                    else if (display_status_tx_step == 3)
+                    begin
+                        dbg_msg <= display_status[7:0];
+                        display_status_tx_step <= 4;
+                        dbg_wr <= 1;
+                    end
                 end
-                tx_busy_seen <= 0;
-            end
-            else if (dbg_wr)
-            begin
-                dbg_wr <= 0;
+                else
+                begin
+                    if (display_status_tx_step == 4)
+                    begin
+                        display_status_tx_step <= 0;
+                        last_seen_display_status <= display_status;
+                    end
+                    dbg_wr <= 0;
+                end
             end
         end
     end
