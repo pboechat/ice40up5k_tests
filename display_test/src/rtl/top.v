@@ -38,7 +38,7 @@ module top(
     reg b, g, r;
 `endif
 
-    assign cs = cs_dis | cs_spi;
+    assign cs = cs_dis | cs_spi; // cs is shared between SPI and display controllers
 
     initial 
     begin
@@ -49,9 +49,11 @@ module top(
     end
 
     localparam SYS_CLK_FREQ = 12_000_000;
+    localparam SPI_CLK_DIVIDER = 6;
 
-    localparam DIS_RES_X = 320;
-    localparam DIS_RES_Y = 240;
+    localparam DISPLAY_X = 320;
+    localparam DISPLAY_Y = 240;
+    localparam DOWNSCALE_SHIFT = 2;
 
     SB_HFOSC #(
         .CLKHF_DIV("0b10")
@@ -63,11 +65,24 @@ module top(
 
     // memory controller mock
 
+    // rainbow
+    localparam NUM_COLORS = 12;
     localparam RED = {5'b11111, 6'b000000, 5'b00000};
-    localparam GREEN = {5'b00000, 6'b111111, 5'b00000};
-    localparam BLUE = {5'b00000, 6'b000000, 5'b11111};
+    localparam ORANGE = {5'b11111, 6'b011111, 5'b00000};
     localparam YELLOW = {5'b11111, 6'b111111, 5'b00000};
+    localparam LIME_GREEN = {5'b01111, 6'b111111, 5'b00000};
+    localparam GREEN = {5'b00000, 6'b111111, 5'b00000};
+    localparam TURQUOISE = {5'b00000, 6'b111111, 5'b01111};
     localparam CYAN = {5'b00000, 6'b111111, 5'b11111};
+    localparam AZURE = {5'b00000, 6'b011111, 5'b11111};
+    localparam BLUE = {5'b00000, 6'b000000, 5'b11111};
+    localparam VIOLET = {5'b01111, 6'b000000, 5'b11111};
+    localparam MAGENTA = {5'b11111, 6'b000000, 5'b11111};
+    localparam RASPBERRY = {5'b11111, 6'b000000, 5'b01111};
+
+    localparam BYTES_PER_ROW = (DISPLAY_X >> DOWNSCALE_SHIFT) * 2;
+    localparam ROWS_PER_COLOR = (DISPLAY_Y >> DOWNSCALE_SHIFT) / NUM_COLORS;
+    localparam COLOR_BOUNDARY = BYTES_PER_ROW * ROWS_PER_COLOR;
 
     always @(posedge clk)
     begin
@@ -75,28 +90,53 @@ module top(
 
         if (mem_req)
         begin
-            if (mem_addr[17])
+            if (mem_addr < COLOR_BOUNDARY)
             begin
-                mem_out <= mem_addr[0] ? CYAN[7:0] : CYAN[15:8];
+                mem_out <= mem_addr[0] ? RED[7:0] : RED[15:8];
             end
-            else if (mem_addr[16])
+            else if (mem_addr < (2 * COLOR_BOUNDARY))
             begin
-                if (mem_addr[15])
-                begin
-                    mem_out <= mem_addr[0] ? BLUE[7:0] : BLUE[15:8];
-                end
-                else
-                begin
-                    mem_out <= mem_addr[0] ? YELLOW[7:0] : YELLOW[15:8];
-                end
+                mem_out <= mem_addr[0] ? ORANGE[7:0] : ORANGE[15:8];
             end
-            else if (mem_addr[15])
+            else if (mem_addr < (3 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? YELLOW[7:0] : YELLOW[15:8];
+            end
+            else if (mem_addr < (4 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? LIME_GREEN[7:0] : LIME_GREEN[15:8];
+            end
+            else if (mem_addr < (5 * COLOR_BOUNDARY))
             begin
                 mem_out <= mem_addr[0] ? GREEN[7:0] : GREEN[15:8];
             end
+            else if (mem_addr < (6 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? TURQUOISE[7:0] : TURQUOISE[15:8];
+            end
+            else if (mem_addr < (7 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? CYAN[7:0] : CYAN[15:8];
+            end
+            else if (mem_addr < (8 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? AZURE[7:0] : AZURE[15:8];
+            end
+            else if (mem_addr < (9 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? BLUE[7:0] : BLUE[15:8];
+            end
+            else if (mem_addr < (10 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? VIOLET[7:0] : VIOLET[15:8];
+            end
+            else if (mem_addr < (11 * COLOR_BOUNDARY))
+            begin
+                mem_out <= mem_addr[0] ? MAGENTA[7:0] : MAGENTA[15:8];
+            end
             else
             begin
-                mem_out <= mem_addr[0] ? RED[7:0] : RED[15:8];
+                mem_out <= mem_addr[0] ? RASPBERRY[7:0] : RASPBERRY[15:8];
             end
             mem_ready <= 1;
         end
@@ -104,8 +144,9 @@ module top(
 
     display_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
-        .DIS_RES_X(DIS_RES_X),
-        .DIS_RES_Y(DIS_RES_Y),
+        .DISPLAY_X(DISPLAY_X),
+        .DISPLAY_Y(DISPLAY_Y),
+        .DOWNSCALE_SHIFT(DOWNSCALE_SHIFT)
     ) display_controller_inst (
         .clk(clk),
         .reset(reset),
@@ -126,7 +167,7 @@ module top(
     );
 
     master_spi_controller #(
-        .CLK_DIVIDER(3)
+        .CLK_DIVIDER(SPI_CLK_DIVIDER)
     ) master_spi_controller_inst (
         .clk(clk),
         .reset(reset),

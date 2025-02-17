@@ -1,9 +1,108 @@
 `include "ili9341.vh"
 
+module pixel_mem_addr_translator #(
+    parameter DISPLAY_X = 1,                      // horizontal resolution
+    parameter DISPLAY_Y = 1,                      // vertical resolution
+    parameter DOWNSCALE_SHIFT = 0
+) (
+    input wire clk,
+    input wire reset,
+    input wire[$clog2(DISPLAY_X)-1:0] x,
+    input wire[$clog2(DISPLAY_Y)-1:0] y,
+    input wire byte_idx,
+    input wire mem_addr_req,
+    output reg[31:0] mem_addr,
+    output reg mem_addr_ready
+);
+    localparam Y_STRIDE = (DISPLAY_X >> DOWNSCALE_SHIFT) * 2;
+
+    localparam IDLE                 = 3'b000;
+    localparam DOWNSCALE            = 3'b001;
+    localparam ADDR_COMP_0          = 3'b010;
+    localparam ADDR_COMP_1          = 3'b011;
+    localparam RETURN_ADDR          = 3'b100;
+    localparam LAST_STATE           = RETURN_ADDR;
+
+    reg[$clog2(LAST_STATE):0] state = 0;
+    reg[$clog2(DISPLAY_X)-DOWNSCALE_SHIFT-1:0] d_x;
+    reg[$clog2(DISPLAY_Y)-DOWNSCALE_SHIFT-1:0] d_y;
+
+    always @(posedge clk)
+    begin
+        if (reset)
+        begin
+            state <= IDLE;
+            mem_addr <= 0;
+            mem_addr_ready <= 0;
+        end
+        else
+        begin
+            case (state)
+                IDLE:
+                begin
+                    mem_addr_ready <= 0;
+
+                    if (mem_addr_req)
+                    begin
+                        state <= DOWNSCALE;
+                    end
+                end
+                DOWNSCALE:
+                begin
+                    if (mem_addr_req)
+                    begin
+                        d_x <= x >> DOWNSCALE_SHIFT;
+                        d_y <= y >> DOWNSCALE_SHIFT;
+                        state <= ADDR_COMP_0;
+                    end
+                    else
+                    begin
+                        state <= IDLE;
+                    end
+                end
+                ADDR_COMP_0: 
+                begin
+                    if (mem_addr_req)
+                    begin
+                        mem_addr <= byte_idx + d_x * 2;
+                        state <= ADDR_COMP_1;
+                    end
+                    else
+                    begin
+                        state <= IDLE;
+                    end
+                end
+                ADDR_COMP_1:
+                begin 
+                    if (mem_addr_req)
+                    begin
+                        mem_addr <= mem_addr + d_y * Y_STRIDE;
+                        state <= RETURN_ADDR;
+                    end
+                    else
+                    begin
+                        state <= IDLE;
+                    end
+                end
+                RETURN_ADDR: 
+                begin
+                    if (mem_addr_req)
+                    begin
+                        mem_addr_ready <= 1;
+                    end
+
+                    state <= IDLE;
+                end
+            endcase
+        end
+    end
+endmodule
+
 module display_controller #(
     parameter SYS_CLK_FREQ = 1,
-    parameter DIS_RES_X = 1,                      // horizontal resolution
-    parameter DIS_RES_Y = 1                       // vertical resolution
+    parameter DISPLAY_X = 1,                      // horizontal resolution
+    parameter DISPLAY_Y = 1,                      // vertical resolution
+    parameter DOWNSCALE_SHIFT = 0
 ) (
     input wire clk,
     input wire reset,
@@ -44,12 +143,32 @@ module display_controller #(
     localparam LAST_STATE           = MEMWRITE;
 
     localparam PIXEL_FORMAT = `RGB565;
-    localparam SCREEN_BUF_SIZE = DIS_RES_X * DIS_RES_Y * 2; // two bytes per pixel
+    localparam SCREEN_BUF_SIZE = DISPLAY_X * DISPLAY_Y * 2; // two bytes per pixel
 
     reg[$clog2(LAST_STATE):0] state;
     reg[$clog2(LONGEST_TIMER)-1:0] timer;
     reg[2:0] state_setup_flg;
     reg[31:0] param;
+    reg[$clog2(DISPLAY_X)-1:0] pixel_x;
+    reg[$clog2(DISPLAY_Y)-1:0] pixel_y;
+    reg pixel_byte_idx;
+    reg pixel_mem_addr_req;
+    wire pixel_addr_ready;
+
+    pixel_mem_addr_translator #(
+        .DISPLAY_X(DISPLAY_X),
+        .DISPLAY_Y(DISPLAY_Y),
+        .DOWNSCALE_SHIFT(DOWNSCALE_SHIFT)
+    ) pixel_mem_addr_translator_inst (
+        .clk(clk),
+        .reset(reset),
+        .x(pixel_x),
+        .y(pixel_y),
+        .byte_idx(pixel_byte_idx),
+        .mem_addr_req(pixel_mem_addr_req),
+        .mem_addr(mem_addr),
+        .mem_addr_ready(pixel_addr_ready)
+    );
 
     always @(posedge clk)
     begin
@@ -64,7 +183,6 @@ module display_controller #(
             spi_out <= 0;
             spi_start <= 0;
             display_status <= `INVALID_DISPLAY_STATUS;
-            mem_addr <= 0;
             mem_req <= 0;
             param <= 0;
         end
@@ -441,7 +559,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= 8'h00; // spi_start column MSB
+                            spi_out <= 8'h00; // start column MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -456,7 +574,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= 8'h00; // spi_start column MSB
+                            spi_out <= 8'h00; // start column MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -471,7 +589,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= DIS_RES_X[15:8]; // end column MSB
+                            spi_out <= DISPLAY_X[15:8]; // end column MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -486,7 +604,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= DIS_RES_X[7:0]; // end column LSB
+                            spi_out <= DISPLAY_X[7:0]; // end column LSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -528,7 +646,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= 8'h00; // spi_start page MSB
+                            spi_out <= 8'h00; // start page MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -543,7 +661,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= 8'h00; // spi_start page LSB
+                            spi_out <= 8'h00; // start page LSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -558,7 +676,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= DIS_RES_Y[15:8]; // end page MSB
+                            spi_out <= DISPLAY_Y[15:8]; // end page MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -573,7 +691,7 @@ module display_controller #(
                         begin
                             cs <= 0;
                             dc <= `DATA_BIT;
-                            spi_out <= DIS_RES_Y[7:0]; // end page LSB
+                            spi_out <= DISPLAY_Y[7:0]; // end page LSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
@@ -607,20 +725,32 @@ module display_controller #(
                         begin
                             spi_start <= 0;
                             
-                            mem_addr <= 0;
-                            mem_req <= 1;
+                            pixel_x <= 0;
+                            pixel_y <= 0;
+                            pixel_byte_idx <= 0;
+                            pixel_mem_addr_req <= 1;
 
                             state_setup_flg <= 1;
                         end
                     end
                     else if (state_setup_flg == 1)
                     begin
+                        if (pixel_addr_ready)
+                        begin
+                            pixel_mem_addr_req <= 0;
+                            mem_req <= 1;
+
+                            state_setup_flg <= 2;
+                        end
+                    end
+                    else if (state_setup_flg == 2)
+                    begin
                         if (mem_ready)
                         begin
                             spi_out <= mem_in;
                             mem_req <= 0;
 
-                            state_setup_flg <= 2;
+                            state_setup_flg <= 3;
                         end
                     end
                     else
@@ -635,17 +765,36 @@ module display_controller #(
                         begin
                             spi_start <= 0;
 
-                            if (mem_addr == (SCREEN_BUF_SIZE - 1))
+                            if (pixel_byte_idx == 0)
                             begin
-                                state_setup_flg <= 0;
-                                state <= MEMWRITE;
+                                pixel_byte_idx <= 1;
+                                pixel_mem_addr_req <= 1;
+
+                                state_setup_flg <= 1;
                             end
                             else
                             begin
-                                mem_addr <= mem_addr + 1;
-                                mem_req <= 1;
+                                if (pixel_x < (DISPLAY_X - 1))
+                                begin
+                                    pixel_x <= pixel_x + 1;
+                                    pixel_byte_idx <= 0;
+                                    pixel_mem_addr_req <= 1;
 
-                                state_setup_flg <= 1;
+                                    state_setup_flg <= 1;
+                                end
+                                else if (pixel_y < (DISPLAY_Y - 1))
+                                begin
+                                    pixel_x <= 0;
+                                    pixel_y <= pixel_y + 1;
+                                    pixel_byte_idx <= 0;
+                                    pixel_mem_addr_req <= 1;
+
+                                    state_setup_flg <= 1;
+                                end
+                                else
+                                begin
+                                    state_setup_flg <= 0;
+                                end
                             end
                         end
                     end

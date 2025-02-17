@@ -8,9 +8,9 @@ module display_controller_tb;
     wire dc;
     wire spi_start;
     wire[7:0] spi_out;
-    wire[31:0] mem_addr;
     wire mem_req;
     wire[31:0] display_status;
+    reg[31:0] mem_addr;
     reg clk_val;
     reg reset_val;
     reg spi_busy_val;
@@ -27,8 +27,9 @@ module display_controller_tb;
     always #1 clk_val = ~clk_val;
 
     localparam SYS_CLK_FREQ = 1;
-    localparam DIS_RES_X = 3;
-    localparam DIS_RES_Y = 4;
+    localparam DISPLAY_X = 3;
+    localparam DISPLAY_Y = 4;'
+
     localparam HW_RESET_HOLD_TIMER = max(4, SYS_CLK_FREQ / 100000);         // 10 us
     localparam HW_RESET_RELEASE_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));  // 5 ms
     localparam SW_RESET_TIMER = max(4, SYS_CLK_FREQ / (1000 / 5));          // 5 ms
@@ -36,8 +37,8 @@ module display_controller_tb;
 
     display_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
-        .DIS_RES_X(DIS_RES_X),
-        .DIS_RES_Y(DIS_RES_Y)
+        .DISPLAY_X(DISPLAY_X),
+        .DISPLAY_Y(DISPLAY_Y)
     ) display_controller_impl (
         .clk(clk),
         .reset(reset),
@@ -169,7 +170,7 @@ module display_controller_tb;
     end
     endtask
 
-    localparam SCREEN_BUF_SIZE = DIS_RES_X * DIS_RES_Y * 2;
+    localparam SCREEN_BUF_SIZE = DISPLAY_X * DISPLAY_Y * 2;
 
     initial 
     begin
@@ -251,11 +252,11 @@ module display_controller_tb;
             end
             else if (step == 16)
             begin
-                assert_data(DIS_RES_X[15:8]);
+                assert_data(DISPLAY_X[15:8]);
             end
             else if (step == 17)
             begin
-                assert_data(DIS_RES_X[7:0]);
+                assert_data(DISPLAY_X[7:0]);
             end
             else if (step == 18)
             begin
@@ -267,11 +268,11 @@ module display_controller_tb;
             end
             else if (step == 21)
             begin
-                assert_data(DIS_RES_Y[15:8]);
+                assert_data(DISPLAY_Y[15:8]);
             end
             else if (step == 22)
             begin
-                assert_data(DIS_RES_Y[7:0]);
+                assert_data(DISPLAY_Y[7:0]);
             end
             else if (step == 23)
             begin
