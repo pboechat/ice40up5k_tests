@@ -33,4 +33,7 @@ Implements a very simple command decoder over UART.
 
 ### [display_test](display_test)
 
-TODO
+Displays the rainbow colors in a ILI9341 TFT display connected to the board via SPI.
+
+
+*note*: All designs are in reset mode until right-most switch (49A) is ON.

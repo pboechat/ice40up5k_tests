@@ -1,5 +1,7 @@
 # display_test
 
+Displays the rainbow colors in a ILI9341 TFT display connected to the board via SPI.
+
 ## initialization sequence
 
 TODO

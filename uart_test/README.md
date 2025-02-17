@@ -1,3 +1,3 @@
 # uart_test
 
-TODO
+Implements a very simple command decoder over UART.
