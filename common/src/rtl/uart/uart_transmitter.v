@@ -30,8 +30,8 @@ module uart_transmitter #(
     begin
         if (reset) 
         begin
-            tx <= 1'b1;                                             // tx line high (idle)
-            busy <= 1'b0;                                           // announce we're idle
+            tx <= 1;                                             // tx line high (idle)
+            busy <= 0;                                           // announce we're idle
             state <= IDLE;
             shift_reg <= 0;
             timer <= 0;
@@ -42,23 +42,23 @@ module uart_transmitter #(
             case (state)
                 IDLE: 
                 begin
-                    tx <= 1'b1;                                     // tx line high (idle)
-                    busy <= 1'b0;                                   // announce we're idle
-                    if (send)                                       // send signal received
+                    tx <= 1;                                     // tx line high (idle)
+                    busy <= 0;                                   // announce we're idle
+                    if (send)                                    // send signal received
                     begin
-                        busy <= 1'b1;                               // announce we're busy
-                        shift_reg <= data_in;                       // copy data to transmit
-                        state <= TMT_START_BIT;                     // prepare for transmitting the start bit
+                        busy <= 1;                               // announce we're busy
+                        shift_reg <= data_in;                    // copy data to transmit
+                        state <= TMT_START_BIT;                  // prepare for transmitting the start bit
                         timer <= BIT_PERIOD - 1;
                     end
                 end
                 TMT_START_BIT: 
                 begin
-                    tx <= 1'b0;                                     // transmit the start bit (tx line low) for the duration of a frame
+                    tx <= 0;                                     // transmit the start bit (tx line low) for the duration of a frame
                     if (timer == 0) 
                     begin
                         bit_index <= 0;
-                        state <= TMT_DATA_BITS;                     // prepare for transmitting the data bits
+                        state <= TMT_DATA_BITS;                  // prepare for transmitting the data bits
                         timer <= BIT_PERIOD - 1;
                     end 
                     else 
@@ -68,12 +68,12 @@ module uart_transmitter #(
                 end
                 TMT_DATA_BITS: 
                 begin
-                    tx <= shift_reg[bit_index];                     // transmit the current data bit for the duration of a frame
+                    tx <= shift_reg[bit_index];                  // transmit the current data bit for the duration of a frame
                     if (timer == 0) 
                     begin
-                        if (bit_index == 7)                         // all data bits transmitted
+                        if (bit_index == 7)                      // all data bits transmitted
                         begin
-                            state <= TMT_STOP_BIT;                  // prepare for transmitting the stop bit
+                            state <= TMT_STOP_BIT;               // prepare for transmitting the stop bit
                         end 
                         else 
                         begin
@@ -88,11 +88,11 @@ module uart_transmitter #(
                 end
                 TMT_STOP_BIT: 
                 begin
-                    tx <= 1'b1;                                     // transmit the stop bit (tx line high) for the duration of a frame
+                    tx <= 1;                                     // transmit the stop bit (tx line high) for the duration of a frame
                     if (timer == 0) 
                     begin
-                        busy <= 1'b0;                               // announce we're idle again (ie, transmission completed)
-                        state <= IDLE;                              // return to idle
+                        busy <= 0;                               // announce we're idle again (ie, transmission completed)
+                        state <= IDLE;                           // return to idle
                     end 
                     else 
                     begin

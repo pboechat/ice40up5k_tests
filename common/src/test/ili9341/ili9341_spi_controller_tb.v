@@ -75,7 +75,7 @@ module ili9341_spi_controller_tb;
             if (spi_busy_timer == 0)
             begin
                 spi_in <= 8'b10101010;
-                spi_busy_val <= 1'b0;
+                spi_busy_val <= 0;
             end
             else
             begin
@@ -86,7 +86,7 @@ module ili9341_spi_controller_tb;
         begin
             if (spi_start)
             begin
-                spi_busy_val <= 1'b1;
+                spi_busy_val <= 1;
                 spi_busy_timer <= spi_busy_timer - 1;
             end
         end
@@ -177,15 +177,15 @@ module ili9341_spi_controller_tb;
         $dumpfile("ili9341_spi_controller_tb.vcd");
         $dumpvars(0, ili9341_spi_controller_tb);
 
-        clk_val = 1'b1;                                             // set clk high
-        spi_busy_val = 1'b0;                                        // set spi_busy low
-        reset_val = 1'b1;                                           // set reset high
+        clk_val = 1;                                             // set clk high
+        spi_busy_val = 0;                                        // set spi_busy low
+        reset_val = 1;                                           // set reset high
 
         @(posedge clk);
 
         assert_eq(dis_reset, 1, "dis_reset");
 
-        reset_val = 1'b0;                                           // set reset low
+        reset_val = 0;                                           // set reset low
 
         @(dis_reset_lo_evt)
 
@@ -283,7 +283,7 @@ module ili9341_spi_controller_tb;
                 assert_data(next_pixel_byte(mem_addr));
                 if (mem_addr == (SCREEN_BUF_SIZE - 1))
                 begin
-                    $display("[display_controller_tb           ] - T(%9t) - success", $time);
+                    $display("[ili9341_spi_controller_tb       ] - T(%9t) - success", $time);
                     $finish();
                 end
             end

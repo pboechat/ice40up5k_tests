@@ -133,6 +133,7 @@ module fifo_tb;
         assert_eq(data_out, 3, "data_out");
         assert_eq(empty, 1, "empty");
 
+        $display("[fifo_tb                         ] - T(%9t) - success", $time);
         $finish();
     end
 endmodule

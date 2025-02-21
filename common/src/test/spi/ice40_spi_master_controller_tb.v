@@ -25,8 +25,6 @@ module ice40_spi_master_controller_tb;
     assign spi_ack = spi_ack_val;
     assign start = start_val;
 
-    localparam CYCLE_TO_TU = 2;
-
     always #1 clk_val = ~clk_val;
 
     localparam SPI_CLK_DIVIDER = 1;
@@ -126,7 +124,7 @@ module ice40_spi_master_controller_tb;
         clk_val = 1'b1;                                             // set clk high
         reset_val = 1'b1;                                           // set reset high
 
-        #(CYCLE_TO_TU);                                             // 1 cycle (reset)
+        @(posedge clk);                                             // 1 cycle (reset)
 
         assert_eq(busy, 1, "busy");
 

@@ -63,17 +63,17 @@ module uart_receiver_tb;
 
         if (data_ready != 1'b1)
         begin
-            $display("[uart_receiver_tb     ] - T(%t) - data_ready(b0), expected(b1)", $time);
+            $display("[uart_receiver_tb                ] - T(%t) - data_ready(b0), expected(b1)", $time);
             $stop();
         end
 
         if (data_out != TEST_DATA)
         begin
-            $display("[uart_receiver_tb     ] - T(%t) - data_out(b%b), expected(b%b)", $time, data_out, TEST_DATA);
+            $display("[uart_receiver_tb                ] - T(%t) - data_out(b%b), expected(b%b)", $time, data_out, TEST_DATA);
             $stop();
         end
 
-        $display("[uart_receiver_tb     ] - T(%t) - success", $time);
+        $display("[uart_receiver_tb                ] - T(%t) - success", $time);
         $finish();
     end
 endmodule

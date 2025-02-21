@@ -32,20 +32,12 @@ module top(
     wire[31:0] display_status;
     reg dbg_wr;
     reg[7:0] dbg_msg;
-    reg[31:0] last_seen_display_status;
     reg[2:0] display_status_tx_step;
+    reg[31:0] last_seen_display_status;
     reg b, g, r;
 `endif
 
     assign cs = cs_dis | cs_spi; // cs is shared between SPI and display controllers
-
-    initial 
-    begin
-`ifdef DEBUG
-        last_seen_display_status <= `INVALID_DISPLAY_STATUS;
-        display_status_tx_step <= 0;
-`endif    
-    end
 
     localparam SYS_CLK_FREQ = 12_000_000;
     localparam SPI_CLK_DIVIDER = 6;
@@ -64,8 +56,10 @@ module top(
 
     // memory controller mock
 
-    // rainbow
+    // rainbow colors
+
     localparam NUM_COLORS = 12;
+    
     localparam RED = {5'b11111, 6'b000000, 5'b00000};
     localparam ORANGE = {5'b11111, 6'b011111, 5'b00000};
     localparam YELLOW = {5'b11111, 6'b111111, 5'b00000};
@@ -200,6 +194,10 @@ module top(
             b <= 0;
             g <= 0;
             r <= 1;
+            dbg_wr <= 0;
+            dbg_msg <= 0;
+            display_status_tx_step <= 0;
+            last_seen_display_status <= `INVALID_DISPLAY_STATUS;
         end
         else
         begin

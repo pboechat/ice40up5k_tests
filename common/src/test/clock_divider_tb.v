@@ -47,6 +47,7 @@ module clock_divider_tb;
 
         assert_eq(out_clk, 1, "out_clk");
 
+        $display("[clock_divider_tb                ] - T(%9t) - success", $time);
         $finish();
     end
 endmodule

@@ -14,9 +14,6 @@ module uart_dbg_tb;
     assign clk = clk_val;
     assign reset = reset_val;
 
-    localparam CYCLE_TO_TU = 2;
-    localparam HALF_CYCLE_TO_TU = (CYCLE_TO_TU / 2);
-
     always #1 clk_val = ~clk_val;
 
     localparam MAX_SIM_CYCLES = 1000;
@@ -63,7 +60,7 @@ module uart_dbg_tb;
         wr <= 0;                            // set write to low
         msg <= 0;                           // set msg to 0
 
-        #(CYCLE_TO_TU);                     // run for 1 cycle (reset)
+        @(posedge clk);                     // run for 1 cycle (reset)
 
         reset_val = 0;                      // set reset low
 
@@ -74,8 +71,9 @@ module uart_dbg_tb;
         
             @(posedge clk);
 
-            if (prod_step == 1000)
+            if (prod_step == MAX_SIM_CYCLES)
             begin
+                $display("[uart_dbg_tb                     ] - T(%9t) - success", $time);
                 $finish();
             end
 
@@ -88,8 +86,9 @@ module uart_dbg_tb;
 
             assert_eq(rx_msg, cons_step, "rx_msg");
 
-            if (prod_step == 1000)
+            if (prod_step == MAX_SIM_CYCLES)
             begin
+                $display("[uart_dbg_tb                     ] - T(%9t) - success", $time);
                 $finish();
             end
 

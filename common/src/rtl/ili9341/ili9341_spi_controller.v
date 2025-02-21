@@ -19,6 +19,7 @@ module pixel_mem_addr_translator #(
 );
     localparam Y_STRIDE = (DISPLAY_X >> DOWNSCALE_SHIFT) * 2;
 
+    // states
     localparam IDLE                 = 3'b000;
     localparam DOWNSCALE            = 3'b001;
     localparam ADDR_COMP_0          = 3'b010;
@@ -26,7 +27,7 @@ module pixel_mem_addr_translator #(
     localparam RETURN_ADDR          = 3'b100;
     localparam LAST_STATE           = RETURN_ADDR;
 
-    reg[$clog2(LAST_STATE):0] state = 0;
+    reg[$clog2(LAST_STATE):0] state;
     reg[$clog2(DISPLAY_X)-DOWNSCALE_SHIFT-1:0] d_x;
     reg[$clog2(DISPLAY_Y)-DOWNSCALE_SHIFT-1:0] d_y;
 
@@ -120,7 +121,8 @@ module ili9341_spi_controller #(
     output reg[7:0] spi_out,
     output wire[31:0] mem_addr,
     output reg mem_req,
-    output reg[31:0] display_status
+    output reg[31:0] display_status,
+    output reg frame_ended
 );
     `include "functions.vh"
 
@@ -188,6 +190,7 @@ module ili9341_spi_controller #(
             display_status <= `INVALID_DISPLAY_STATUS;
             mem_req <= 0;
             param <= 0;
+            frame_ended <= 0;
         end
         else
         begin
@@ -717,6 +720,8 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 0)
                     begin
+                        frame_ended <= 0;
+
                         if (spi_busy == 0)
                         begin
                             cs <= 0;
@@ -796,6 +801,7 @@ module ili9341_spi_controller #(
                                 end
                                 else
                                 begin
+                                    frame_ended <= 1;
                                     state_setup_flg <= 0;
                                 end
                             end
