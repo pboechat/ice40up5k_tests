@@ -29,7 +29,7 @@ Cycles through RGB on the LED.
 
 ### [uart_test](uart_test)
 
-Controls a LED via commands sent over UART.
+Controls the LED via commands sent over UART.
 
 ### [display_test](display_test)
 
