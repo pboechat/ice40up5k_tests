@@ -99,6 +99,7 @@ module image_streaming_controller_tb;
             begin
                 @(posedge swap);
 
+                $display("[image_streaming_controller_tb   ] - T(%9t) - success", $time);
                 $finish();
             end
 
