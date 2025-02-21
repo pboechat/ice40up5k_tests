@@ -1,12 +1,12 @@
 # display_test
 
-Displays the rainbow colors in a ILI9341 TFT display connected to the board via SPI.
+Displays the rainbow colors on a ILI9341 TFT display connected to the board via SPI.
 
-## initialization sequence
+## ILI9341 initialization sequence
 
 TODO
 
-## display status
+## Display status
 
 After the initialization sequence, the design sends the display status via the UART debug interface (MSB-first).
 

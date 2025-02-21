@@ -25,19 +25,19 @@ python-is-python3
 
 ### [led_test](led_test)
 
-Blinks the LED in RGB at every 3 seconds.
+Cycles through RGB on the LED.
 
 ### [uart_test](uart_test)
 
-Implements a very simple command decoder over UART.
+Controls a LED via commands sent over UART.
 
 ### [display_test](display_test)
 
-Displays the rainbow colors in a ILI9341 TFT display connected to the board via SPI.
+Displays the rainbow colors on an ILI9341 TFT display connected to the board via SPI.
 
 ### [image_streaming_test](image_streaming_test)
 
-TODO
+Displays an image streamed over UART on an ILI9341 TFT display.
 
 
 *note*: All designs are in reset mode until right-most switch (49A) is ON.
