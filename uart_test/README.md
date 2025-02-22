@@ -29,7 +29,7 @@ Controls the LED via commands sent over UART.
 
 ### SET
 
-Sets color of the LED. You must specify 0 or 1 for each color channel (R, G, and B).
+Sets the color of the LED. You must specify 0 or 1 for each color channel (R, G, and B).
 
 eg, set the color of the LED to red
 ```
