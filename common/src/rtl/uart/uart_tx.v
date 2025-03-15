@@ -7,7 +7,7 @@ module uart_tx #(
 ) (
     input wire clk,
     input wire reset,
-    input wire[7:0] data_in,                                   // 8-bit data package to transmit
+    input wire[7:0] data_in,                                    // 8-bit data package to transmit
     input wire send,                                            // start transmission when high
     output reg tx,
     output reg busy                                             // is transmitting?
@@ -30,9 +30,9 @@ module uart_tx #(
     begin
         if (reset) 
         begin
+            state <= IDLE;
             tx <= 1'b1;                                         // tx line high (idle)
             busy <= 1'b0;                                       // announce we're idle
-            state <= IDLE;
             tx_data <= 8'h00;
             timer <= '0;
             bit_index <= 3'd0;

@@ -11,7 +11,7 @@ module uart_rx_tb;
     reg rx_val;
     reg[7:0] test_data = TEST_DATA;
     wire[7:0] data_out;
-    wire data_ready;
+    wire ready;
 
     assign clk = clk_val;
     assign reset = reset_val;
@@ -27,7 +27,7 @@ module uart_rx_tb;
 		.reset(reset),
 		.rx(rx),
 		.data_out(data_out),
-		.data_ready(data_ready)
+		.ready(ready)
 	);
 
     integer i;
@@ -64,9 +64,9 @@ module uart_rx_tb;
 
         #8;                                 // run for 4 cycles / 1 bit period (read stop bit)
 
-        if (data_ready != 1'b1)
+        if (ready != 1'b1)
         begin
-            $display("[uart_rx_tb                      ] - T(%t) - data_ready(b0), expected(b1)", $time);
+            $display("[uart_rx_tb                      ] - T(%t) - ready(b0), expected(b1)", $time);
             $stop();
         end
 

@@ -158,7 +158,7 @@ module top(
         .reset(reset),
         .rx(raw_rx),
         .data_out(rx_data),
-        .data_ready(rx_ready)
+        .ready(rx_ready)
     );
 
     uart_tx #(

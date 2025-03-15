@@ -53,7 +53,7 @@ module top(
         .reset(reset),
         .rx(raw_rx),
         .data_out(rcv_data),
-        .data_ready(rcv_ready)
+        .ready(rcv_ready)
     );
 
     uart_tx #(

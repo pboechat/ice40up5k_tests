@@ -8,8 +8,8 @@ module uart_rx #(
     input wire clk,
     input wire reset,
     input wire rx,
-    output reg[7:0] data_out,                              // received 8-bit data package
-    output reg data_ready                                   // is data ready?
+    output reg[7:0] data_out,                               // received 8-bit data package
+    output reg ready                                        // is data ready?
 );
     // bit period = number of clock cycles for receiving a bit
     localparam BIT_PERIOD = SYS_CLK_FREQ / BAUD_RATE;
@@ -20,29 +20,29 @@ module uart_rx #(
     localparam RCV_DATA_BITS  = 2'b10;
     localparam RCV_STOP_BIT   = 2'b11;
 
-    reg[1:0] state = IDLE;
-    reg[$clog2(BIT_PERIOD)-1:0] timer = 0;
-    reg[3:0] bit_index = 0;                                // tracks which data bit is being received
-    reg[7:0] shift_reg = 0;                                // data being received
+    reg[1:0] state;
+    reg[$clog2(BIT_PERIOD)-1:0] timer;
+    reg[3:0] bit_index;                                     // tracks which data bit is being received
+    reg[7:0] rx_data;                                       // data being received
 
     always @(posedge clk) 
     begin
         if (reset)
         begin
             state <= IDLE;
-            timer <= 0;
-            bit_index <= 0;
-            shift_reg <= 0;
-            data_ready <= 0;
-            data_out <= 0;
+            timer <= '0;
+            bit_index <= 3'd0;
+            rx_data <= 8'h00;
+            ready <= 1'b0;
+            data_out <= 8'h00;
         end
         else
         begin
             case (state)
                 IDLE: 
                 begin
-                    data_ready <= 1'b0;                     // announce data is not ready
-                    if (rx == 0)                            // rx is low, wait for the start bit 
+                    ready <= 1'b0;                          // announce data is not ready
+                    if (~|rx)                               // rx is low, wait for the start bit 
                     begin
                         state <= RCV_START_BIT;             // prepare for receiving the start bit
                         timer <= BIT_PERIOD / 2;            // sample rx in the middle of a frame
@@ -50,12 +50,12 @@ module uart_rx #(
                 end
                 RCV_START_BIT: 
                 begin
-                    if (timer == 0)
+                    if (~|timer)
                     begin
-                        if (rx == 0)                        // rx is still low, start bit received
+                        if (~|rx)                           // rx is still low, start bit received
                         begin
                             state <= RCV_DATA_BITS;         // prepare for receiving the data bits
-                            bit_index <= 0; 
+                            bit_index <= 3'd0; 
                             timer <= BIT_PERIOD - 1;
                         end 
                         else                                // false start
@@ -70,11 +70,11 @@ module uart_rx #(
                 end
                 RCV_DATA_BITS: 
                 begin
-                    if (timer == 0)
+                    if (~|timer)
                     begin
-                        shift_reg[bit_index] <= rx;         // receive current data bit
+                        rx_data[bit_index] <= rx;           // receive current data bit
                         bit_index <= bit_index + 1;
-                        if (bit_index == 7)                 // received all 8 bits
+                        if (bit_index == 3'd7)              // received all 8 bits
                         begin
                             state <= RCV_STOP_BIT;          // prepare for receiving the stop bit
                         end
@@ -87,12 +87,12 @@ module uart_rx #(
                 end
                 RCV_STOP_BIT: 
                 begin
-                    if (timer == 0) 
+                    if (~|timer) 
                     begin
-                        if (rx == 1)                        // rx is high, stop bit received
+                        if (|rx)                            // rx is high, stop bit received
                         begin
-                            data_out <= shift_reg;
-                            data_ready <= 1'b1;             // announce that data is ready!
+                            data_out <= rx_data;
+                            ready <= 1'b1;                  // announce that data is ready!
                         end
                         state <= IDLE;                      // go back to IDLE
                     end 

@@ -42,7 +42,7 @@ module uart_dbg_tb;
         .reset(reset),
         .rx(tx),
         .data_out(rx_msg),
-        .data_ready(rx_ready)
+        .ready(rx_ready)
     );
 
     `include "asserts.vh"
