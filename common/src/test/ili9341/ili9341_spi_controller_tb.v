@@ -140,7 +140,7 @@ module ili9341_spi_controller_tb;
         -> spi_start_hi_evt;
     end
 
-    `include "assertions.vh"
+    `include "asserts.vh"
 
     task assert_command(input reg[7:0] command);
     begin

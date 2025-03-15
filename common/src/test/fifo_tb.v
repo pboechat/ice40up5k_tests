@@ -31,7 +31,7 @@ module fifo_tb;
         .full(full)
     );
 
-    `include "assertions.vh"
+    `include "asserts.vh"
 
     integer i = 0;
 

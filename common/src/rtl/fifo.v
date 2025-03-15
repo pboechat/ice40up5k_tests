@@ -26,18 +26,18 @@ module fifo #(
     begin
         if (reset) 
         begin
-            wr_ptr <= 0;
-            rd_ptr <= 0;
-            data_out <= 0;
+            wr_ptr <= 'b0;
+            rd_ptr <= 'b0;
+            data_out <= 'b0;
         end 
         else 
         begin
-            if (wr && !full) 
+            if (wr && ~full) 
             begin
                 mem[wr_ptr] <= data_in;
                 wr_ptr <= (wr_ptr + 1) % SLOT_COUNT;
             end
-            if (rd && !empty) 
+            if (rd && ~empty) 
             begin
                 data_out <= mem[rd_ptr];
                 rd_ptr <= (rd_ptr + 1) % SLOT_COUNT;

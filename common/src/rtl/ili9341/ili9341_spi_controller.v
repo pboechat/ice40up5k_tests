@@ -36,15 +36,15 @@ module pixel_mem_addr_translator #(
         if (reset)
         begin
             state <= IDLE;
-            mem_addr <= 0;
-            mem_addr_ready <= 0;
+            mem_addr <= 32'h00000000;
+            mem_addr_ready <= 1'b0;
         end
         else
         begin
             case (state)
                 IDLE:
                 begin
-                    mem_addr_ready <= 0;
+                    mem_addr_ready <= 1'b0;
 
                     if (mem_addr_req)
                     begin
@@ -92,7 +92,7 @@ module pixel_mem_addr_translator #(
                 begin
                     if (mem_addr_req)
                     begin
-                        mem_addr_ready <= 1;
+                        mem_addr_ready <= 1'b1;
                     end
 
                     state <= IDLE;
@@ -179,38 +179,38 @@ module ili9341_spi_controller #(
     begin
         if (reset)
         begin
-            state_setup_flg <= 0;
+            state_setup_flg <= 'd0;
             state <= HW_RESET;
             dc <= `COMMAND_BIT;
-            cs <= 1;
-            dis_reset <= 1;
-            timer <= 0;
-            spi_out <= 0;
-            spi_start <= 0;
+            cs <= 1'b1;
+            dis_reset <= 1'b1;
+            timer <= 1'b0;
+            spi_out <= 8'h00;
+            spi_start <= 1'b0;
             display_status <= `INVALID_DISPLAY_STATUS;
-            mem_req <= 0;
-            param <= 0;
-            frame_ended <= 0;
+            mem_req <= 1'b0;
+            param <= 32'h00000000;
+            frame_ended <= 1'b0;
         end
         else
         begin
             case (state)
                 HW_RESET:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        dis_reset <= 0;
-                        cs <= 1;
-                        state_setup_flg <= 1;
+                        dis_reset <= 1'b0;
+                        cs <= 1'b1;
+                        state_setup_flg <= 'd1;
                         timer <= HW_RESET_HOLD_TIMER - 1;
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (timer == 0)
+                        if (~|timer)
                         begin
-                            dis_reset <= 1;
-                            cs <= 1;
-                            state_setup_flg <= 2;
+                            dis_reset <= 1'b1;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd2;
                             timer <= HW_RESET_RELEASE_TIMER - 1;
                         end
                         else
@@ -220,9 +220,9 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (timer == 0)
+                        if (~|timer)
                         begin
-                            state_setup_flg <= 0;
+                            state_setup_flg <= 'd0;
                             state <= SW_RESET;
                         end
                         else
@@ -233,35 +233,35 @@ module ili9341_spi_controller #(
                 end
                 SW_RESET:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `SW_RESET_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
+                            cs <= 1'b1;
                             timer <= SW_RESET_TIMER - 1;
-                            state_setup_flg <= 2;
+                            state_setup_flg <= 'd2;
                         end
                     end
                     else
                     begin
-                        if (timer == 0)
+                        if (~|timer)
                         begin
-                            state_setup_flg <= 0;
+                            state_setup_flg <= 'd0;
                             state <= SLPOUT;
                         end
                         else
@@ -272,35 +272,35 @@ module ili9341_spi_controller #(
                 end
                 SLPOUT:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `SLPOUT_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
+                            cs <= 1'b1;
                             timer <= SLPOUT_TIMER - 1;
-                            state_setup_flg <= 2;
+                            state_setup_flg <= 'd2;
                         end
                     end
                     else
                     begin
-                        if (timer == 0)
+                        if (~|timer)
                         begin
-                            state_setup_flg <= 0;
+                            state_setup_flg <= 'd0;
                             state <= MADCTL;
                         end
                         else
@@ -311,26 +311,26 @@ module ili9341_spi_controller #(
                 end
                 MADCTL:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `MADCTL_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             // 0 - row address order        (0=top to bottom, 1=bottom to top)
                             // 1 - column address order     (0=left to right, 1=right to left)
@@ -342,467 +342,467 @@ module ili9341_spi_controller #(
                             // 7 - unused
                             // enable reverse mode & RGB
                             spi_out <= 8'b0_0_1_0_1_0_0_0;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 2;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd2;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= COLMOD;
                         end
                     end
                 end
                 COLMOD:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `COLMOD_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= PIXEL_FORMAT;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 2;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd2;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= DISPON;
                         end
                     end
                 end
                 DISPON:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `DISPON_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= READ_DISPLAY_STATUS;
                         end
                     end
                 end
                 READ_DISPLAY_STATUS:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `READ_DISPLAY_STATUS_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_out <= 0;
-                            spi_start <= 1;
+                            spi_out <= 1'b0;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 2;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd2;
                         end
                     end
-                    else if (state_setup_flg == 2)
+                    else if (state_setup_flg == 'd2)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
                             // ignore parameter 1
 
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_out <= 0;
-                            spi_start <= 1;
+                            spi_out <= 8'h00;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 3;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd3;
                         end
                     end
-                    else if (state_setup_flg == 3)
+                    else if (state_setup_flg == 'd3)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
                             param[31:24] <= spi_in; // parameter 2
 
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_out <= 0;
-                            spi_start <= 1;
+                            spi_out <= 8'h00;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 4;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd4;
                         end
                     end
-                    else if (state_setup_flg == 4)
+                    else if (state_setup_flg == 'd4)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
                             param[23:16] <= spi_in; // parameter 3
 
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_out <= 0;
-                            cs <= 0;
-                            spi_start <= 1;
+                            spi_out <= 8'h00;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 5;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd5;
                         end
                     end
-                    else if (state_setup_flg == 5)
+                    else if (state_setup_flg == 'd5)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
                             param[15:8] <= spi_in; // parameter 4
 
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_out <= 0;
-                            spi_start <= 1;
+                            spi_out <= 8'h00;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 6;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd6;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
                             param[7:0] <= spi_in;
                             display_status <= {param[31:8], spi_in};
 
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= CASET;
                         end
                     end
                 end
                 CASET:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `CASET_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
+                            dc <= `DATA_BIT;
+                            spi_out <= 8'h00; // start column MSB
+                            spi_start <= 1'b1;
+                        end
+                        else if (spi_start)
+                        begin
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd2;
+                        end
+                    end
+                    else if (state_setup_flg == 'd2)
+                    begin
+                        if (~|spi_busy)
+                        begin
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= 8'h00; // start column MSB
                             spi_start <= 1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 2;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd3;
                         end
                     end
-                    else if (state_setup_flg == 2)
+                    else if (state_setup_flg == 'd3)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
-                            dc <= `DATA_BIT;
-                            spi_out <= 8'h00; // start column MSB
-                            spi_start <= 1;
-                        end
-                        else if (spi_start)
-                        begin
-                            spi_start <= 0;
-                            state_setup_flg <= 3;
-                        end
-                    end
-                    else if (state_setup_flg == 3)
-                    begin
-                        if (spi_busy == 0)
-                        begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= DISPLAY_X[15:8]; // end column MSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 4;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd4;
                         end
                     end
-                    else if (state_setup_flg == 4)
+                    else if (state_setup_flg == 'd4)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= DISPLAY_X[7:0]; // end column LSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 5;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd5;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= PASET;
                         end
                     end
                 end
                 PASET:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `PASET_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 1;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= 8'h00; // start page MSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 2;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd2;
                         end
                     end
-                    else if (state_setup_flg == 2)
+                    else if (state_setup_flg == 'd2)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= 8'h00; // start page LSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 3;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd3;
                         end
                     end
-                    else if (state_setup_flg == 3)
+                    else if (state_setup_flg == 'd3)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= DISPLAY_Y[15:8]; // end page MSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 4;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd4;
                         end
                     end
-                    else if (state_setup_flg == 4)
+                    else if (state_setup_flg == 'd4)
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
                             spi_out <= DISPLAY_Y[7:0]; // end page LSB
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
-                            state_setup_flg <= 5;
+                            spi_start <= 1'b0;
+                            state_setup_flg <= 'd5;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 1;
-                            state_setup_flg <= 0;
+                            cs <= 1'b1;
+                            state_setup_flg <= 'd0;
                             state <= MEMWRITE;
                         end
                     end
                 end
                 MEMWRITE:
                 begin
-                    if (state_setup_flg == 0)
+                    if (state_setup_flg == 'd0)
                     begin
-                        frame_ended <= 0;
+                        frame_ended <= 1'b0;
 
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `COMMAND_BIT;
                             spi_out <= `MEMWRITE_CMD;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
+                            spi_start <= 1'b0;
                             
-                            pixel_x <= 0;
-                            pixel_y <= 0;
-                            pixel_byte_idx <= 0;
-                            pixel_mem_addr_req <= 1;
+                            pixel_x <= 'b0;
+                            pixel_y <= 'b0;
+                            pixel_byte_idx <= 1'b0;
+                            pixel_mem_addr_req <= 1'b1;
 
-                            state_setup_flg <= 1;
+                            state_setup_flg <= 'd1;
                         end
                     end
-                    else if (state_setup_flg == 1)
+                    else if (state_setup_flg == 'd1)
                     begin
                         if (pixel_addr_ready)
                         begin
-                            pixel_mem_addr_req <= 0;
-                            mem_req <= 1;
+                            pixel_mem_addr_req <= 1'b0;
+                            mem_req <= 1'b1;
 
-                            state_setup_flg <= 2;
+                            state_setup_flg <= 'd2;
                         end
                     end
-                    else if (state_setup_flg == 2)
+                    else if (state_setup_flg == 'd2)
                     begin
                         if (mem_ready)
                         begin
                             spi_out <= mem_in;
-                            mem_req <= 0;
+                            mem_req <= 1'b0;
 
-                            state_setup_flg <= 3;
+                            state_setup_flg <= 'd3;
                         end
                     end
                     else
                     begin
-                        if (spi_busy == 0)
+                        if (~|spi_busy)
                         begin
-                            cs <= 0;
+                            cs <= 1'b0;
                             dc <= `DATA_BIT;
-                            spi_start <= 1;
+                            spi_start <= 1'b1;
                         end
                         else if (spi_start)
                         begin
-                            spi_start <= 0;
+                            spi_start <= 1'b0;
 
-                            if (pixel_byte_idx == 0)
+                            if (~|pixel_byte_idx)
                             begin
-                                pixel_byte_idx <= 1;
-                                pixel_mem_addr_req <= 1;
+                                pixel_byte_idx <= 1'b1;
+                                pixel_mem_addr_req <= 1'b1;
 
-                                state_setup_flg <= 1;
+                                state_setup_flg <= 'd1;
                             end
                             else
                             begin
                                 if (pixel_x < (DISPLAY_X - 1))
                                 begin
                                     pixel_x <= pixel_x + 1;
-                                    pixel_byte_idx <= 0;
-                                    pixel_mem_addr_req <= 1;
+                                    pixel_byte_idx <= 1'b0;
+                                    pixel_mem_addr_req <= 1'b1;
 
-                                    state_setup_flg <= 1;
+                                    state_setup_flg <= 'd1;
                                 end
                                 else if (pixel_y < (DISPLAY_Y - 1))
                                 begin
-                                    pixel_x <= 0;
+                                    pixel_x <= 'b0;
                                     pixel_y <= pixel_y + 1;
-                                    pixel_byte_idx <= 0;
-                                    pixel_mem_addr_req <= 1;
+                                    pixel_byte_idx <= 1'b0;
+                                    pixel_mem_addr_req <= 1'b1;
 
-                                    state_setup_flg <= 1;
+                                    state_setup_flg <= 'd1;
                                 end
                                 else
                                 begin
-                                    frame_ended <= 1;
-                                    state_setup_flg <= 0;
+                                    frame_ended <= 1'b1;
+                                    state_setup_flg <= 'd0;
                                 end
                             end
                         end
@@ -810,7 +810,7 @@ module ili9341_spi_controller #(
                 end
                 default:
                 begin
-                    state_setup_flg <= 0;
+                    state_setup_flg <= 'd0;
                     state <= HW_RESET;
                 end
             endcase

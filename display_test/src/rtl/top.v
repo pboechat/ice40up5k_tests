@@ -3,7 +3,8 @@
 `include "uart_dbg.v"
 
 module top(
-    input wire reset,
+    input wire clk,                         // 12 MHz external clock oscillator
+    input wire reset,                       // reset
     input wire so,                          // SPI serial output
     output wire dc,                         // data/command
     output wire dis_reset,                  // display reset
@@ -17,44 +18,12 @@ module top(
     output wire RGB2
 `endif
 );
-    wire clk;
-    wire spi_busy;
-    wire spi_start;
-    wire[7:0] spi_in;
-    wire[7:0] spi_out;
-    wire[31:0] mem_addr;
-    wire mem_req;
-    wire cs_dis;
-    wire cs_spi;
-    reg mem_ready;
-    reg[7:0] mem_out;
-`ifdef DEBUG
-    wire[31:0] display_status;
-    reg dbg_wr;
-    reg[7:0] dbg_msg;
-    reg[2:0] display_status_tx_step;
-    reg[31:0] last_seen_display_status;
-    reg b, g, r;
-`endif
-
-    assign cs = cs_dis | cs_spi; // cs is shared between SPI and display controllers
-
     localparam SYS_CLK_FREQ = 12_000_000;
     localparam SPI_CLK_DIVIDER = 6;
 
     localparam DISPLAY_X = 320;
     localparam DISPLAY_Y = 240;
     localparam DOWNSCALE_SHIFT = 2;
-
-    SB_HFOSC #(
-        .CLKHF_DIV("0b10")
-    ) high_freq_oscillator(
-        .CLKHFPU(1'b1), // power-up oscillator
-        .CLKHFEN(1'b1), // enable clock output
-        .CLKHF(clk)     // clock output
-    );
-
-    // memory controller mock
 
     // rainbow colors
 
@@ -77,9 +46,51 @@ module top(
     localparam ROWS_PER_COLOR = (DISPLAY_Y >> DOWNSCALE_SHIFT) / NUM_COLORS;
     localparam COLOR_BOUNDARY = BYTES_PER_ROW * ROWS_PER_COLOR;
 
+    wire clk;
+    wire spi_busy;
+    wire spi_start;
+    wire[7:0] spi_in;
+    wire[7:0] spi_out;
+    wire[31:0] mem_addr;
+    wire mem_req;
+    wire cs0;
+    wire cs1;
+    wire raw_tx;
+    wire raw_sck;
+    reg mem_ready;
+    reg[7:0] mem_out;
+`ifdef DEBUG
+    wire[31:0] display_status;
+    reg dbg_wr;
+    reg[7:0] dbg_msg;
+    reg[2:0] display_status_tx_step;
+    reg[31:0] last_seen_display_status;
+    reg b, g, r;
+`endif
+
+    assign cs = cs0 | cs1; // cs is shared between SPI and display controllers
+
+    SB_IO #(
+        .PIN_TYPE(6'b0110_01), // simple output
+    ) tx_buf (
+        .PACKAGE_PIN(tx),
+        .D_OUT_0(raw_tx)
+    );
+
+    SB_IO #(
+        .PIN_TYPE(6'b0110_01), // registered output
+    ) sck_buf (
+        .PACKAGE_PIN(sck),
+        .CLOCK_ENABLE(1'b1),
+        .OUTPUT_CLK(clk),
+        .D_OUT_1(raw_sck)
+    );
+
+    // memory controller mock
+
     always @(posedge clk)
     begin
-        mem_ready <= 0;
+        mem_ready <= 1'b0;
 
         if (mem_req)
         begin
@@ -131,7 +142,7 @@ module top(
             begin
                 mem_out <= mem_addr[0] ? RASPBERRY[7:0] : RASPBERRY[15:8];
             end
-            mem_ready <= 1;
+            mem_ready <= 1'b1;
         end
     end
 
@@ -149,7 +160,7 @@ module top(
         .mem_ready(mem_ready),
         .dis_reset(dis_reset),
         .dc(dc),
-        .cs(cs_dis),
+        .cs(cs0),
         .spi_start(spi_start),
         .spi_out(spi_in),
         .mem_req(mem_req),
@@ -168,8 +179,8 @@ module top(
         .data_in(spi_in),
         .data_out(spi_out),
         .busy(spi_busy),
-        .cs(cs_spi),
-        .sck(sck),
+        .cs(cs1),
+        .sck(raw_sck),
         .mosi(si),
         .miso(so)
     );
@@ -184,63 +195,63 @@ module top(
         .reset(reset),
         .wr(dbg_wr),
         .msg(dbg_msg),
-        .tx(tx)
+        .tx(raw_tx)
     );
 
     always @(posedge clk)
     begin
         if (reset)
         begin
-            b <= 0;
-            g <= 0;
-            r <= 1;
-            dbg_wr <= 0;
-            dbg_msg <= 0;
-            display_status_tx_step <= 0;
+            b <= 1'b0;
+            g <= 1'b0;
+            r <= 1'b1;
+            dbg_wr <= 1'b0;
+            dbg_msg <= 8'h00;
+            display_status_tx_step <= 'b0;
             last_seen_display_status <= `INVALID_DISPLAY_STATUS;
         end
         else
         begin
-            b <= 0;
-            g <= 1;
-            r <= 0;
+            b <= 1'b0;
+            g <= 1'b1;
+            r <= 1'b0;
             if (last_seen_display_status != display_status)
             begin
-                if (dbg_wr == 0)
+                if (~|dbg_wr)
                 begin
-                    if (display_status_tx_step == 0)
+                    if (display_status_tx_step == 'd0)
                     begin
                         dbg_msg <= display_status[31:24];
-                        display_status_tx_step <= 1;
-                        dbg_wr <= 1;
+                        display_status_tx_step <= 'd1;
+                        dbg_wr <= 1'b1;
                     end
-                    else if (display_status_tx_step == 1)
+                    else if (display_status_tx_step == 'd1)
                     begin
                         dbg_msg <= display_status[23:16];
-                        display_status_tx_step <= 2;
-                        dbg_wr <= 1;
+                        display_status_tx_step <= 'd2;
+                        dbg_wr <= 1'b1;
                     end
-                    else if (display_status_tx_step == 2)
+                    else if (display_status_tx_step == 'd2)
                     begin
                         dbg_msg <= display_status[15:8];
-                        display_status_tx_step <= 3;
-                        dbg_wr <= 1;
+                        display_status_tx_step <= 'd3;
+                        dbg_wr <= 1'b1;
                     end
-                    else if (display_status_tx_step == 3)
+                    else if (display_status_tx_step == 'd3)
                     begin
                         dbg_msg <= display_status[7:0];
-                        display_status_tx_step <= 4;
-                        dbg_wr <= 1;
+                        display_status_tx_step <= 'd4;
+                        dbg_wr <= 1'b1;
                     end
                 end
                 else
                 begin
-                    if (display_status_tx_step == 4)
+                    if (display_status_tx_step == 'd4)
                     begin
-                        display_status_tx_step <= 0;
+                        display_status_tx_step <= 'd0;
                         last_seen_display_status <= display_status;
                     end
-                    dbg_wr <= 0;
+                    dbg_wr <= 1'b0;
                 end
             end
         end

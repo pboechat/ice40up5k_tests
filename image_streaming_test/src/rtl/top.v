@@ -1,11 +1,12 @@
 `include "ili9341/ili9341_spi_controller.v"
 `include "spi/spi_master_controller.v"
-`include "uart/uart_receiver.v"
-`include "uart/uart_transmitter.v"
+`include "uart/uart_rx.v"
+`include "uart/uart_tx.v"
 `include "single_port_ram.v"
 
 module top(
-    input wire reset,
+    input wire clk,                         // 12 MHz external clock oscillator
+    input wire reset,                       // reset
     input wire so,                          // SPI serial output
     input wire rx,                          // UART RX output
     output wire dc,                         // data/command
@@ -20,15 +21,29 @@ module top(
     output wire RGB2
 `endif
 );
-    wire clk;
+    localparam SYS_CLK_FREQ = 12_000_000;
+    localparam SPI_CLK_DIVIDER = 6;
+    localparam BAUD_RATE = 115_200;
+
+    localparam DISPLAY_X = 320;
+    localparam DISPLAY_Y = 240;
+    localparam DOWNSCALE_SHIFT = 3;
+    
+    localparam IMAGE_BUF_X = DISPLAY_X >> DOWNSCALE_SHIFT;
+    localparam IMAGE_BUF_Y = DISPLAY_Y >> DOWNSCALE_SHIFT;
+    localparam IMAGE_BUF_SIZE = IMAGE_BUF_X * IMAGE_BUF_Y * 2;
+
     wire spi_busy;
     wire spi_start;
     wire[7:0] spi_in;
     wire[7:0] spi_out;
-    wire cs_dis;
-    wire cs_spi;
+    wire cs0;
+    wire cs1;
+    wire raw_sck;
+    wire raw_rx;
     wire[7:0] rx_data;
     wire rx_ready;
+    wire raw_tx;
     wire[7:0] tx_data;
     wire tx_busy;
     wire tx_ready;
@@ -54,27 +69,15 @@ module top(
     wire[7:0] imagebuf_1_in;
     wire[31:0] imagebuf_0_addr;
     wire[31:0] imagebuf_1_addr;
-    reg frontbuf = 0;
-    reg swap_req = 0;
+    reg frontbuf;
+    reg swap_req;
 `ifdef DEBUG
     wire r, g, b;
     reg b0, g0, r0;
     reg b1, g1, r1;
 `endif
 
-    localparam SYS_CLK_FREQ = 12_000_000;
-    localparam SPI_CLK_DIVIDER = 6;
-    localparam BAUD_RATE = 115_200;
-
-    localparam DISPLAY_X = 320;
-    localparam DISPLAY_Y = 240;
-    localparam DOWNSCALE_SHIFT = 3;
-    
-    localparam IMAGE_BUF_X = DISPLAY_X >> DOWNSCALE_SHIFT;
-    localparam IMAGE_BUF_Y = DISPLAY_Y >> DOWNSCALE_SHIFT;
-    localparam IMAGE_BUF_SIZE = IMAGE_BUF_X * IMAGE_BUF_Y * 2;
-
-    assign cs = cs_dis | cs_spi; // cs is shared between SPI and display controllers
+    assign cs = cs0 | cs1; // cs is shared between SPI and display controllers
 
 `ifdef DEBUG
     assign r = r0 | r1;
@@ -82,81 +85,91 @@ module top(
     assign b = b0 | b1;
 `endif
 
-    assign imagebuf_0_req   = frontbuf == 0 ? frontbuf_req : backbuf_req;
-    assign imagebuf_1_req   = frontbuf == 0 ? backbuf_req : frontbuf_req;
-    assign frontbuf_ready   = frontbuf == 0 ? imagebuf_0_ready : imagebuf_1_ready;
-    assign backbuf_ready    = frontbuf == 0 ? imagebuf_1_ready : imagebuf_0_ready;
-    assign imagebuf_0_we    = frontbuf == 1; // frontbuf is read-only
-    assign imagebuf_1_we    = frontbuf == 0; // frontbuf is read-only
-    assign frontbuf_out     = frontbuf == 0 ? imagebuf_0_out : imagebuf_1_out;
-    assign imagebuf_0_in    = frontbuf == 0 ? 0 : backbuf_in; // frontbuf is read-only
-    assign imagebuf_1_in    = frontbuf == 0 ? backbuf_in : 0; // frontbuf is read-only
-    assign imagebuf_0_addr  = frontbuf == 0 ? frontbuf_addr : backbuf_addr;
-    assign imagebuf_1_addr  = frontbuf == 0 ? backbuf_addr : frontbuf_addr;
+    assign imagebuf_0_req   = frontbuf == 1'b0 ? frontbuf_req : backbuf_req;
+    assign imagebuf_1_req   = frontbuf == 1'b0 ? backbuf_req : frontbuf_req;
+    assign frontbuf_ready   = frontbuf == 1'b0 ? imagebuf_0_ready : imagebuf_1_ready;
+    assign backbuf_ready    = frontbuf == 1'b0 ? imagebuf_1_ready : imagebuf_0_ready;
+    assign imagebuf_0_we    = frontbuf == 1'b1; // frontbuf is read-only
+    assign imagebuf_1_we    = frontbuf == 1'b0; // frontbuf is read-only
+    assign frontbuf_out     = frontbuf == 1'b0 ? imagebuf_0_out : imagebuf_1_out;
+    assign imagebuf_0_in    = frontbuf == 1'b0 ? 1'b0 : backbuf_in; // frontbuf is read-only
+    assign imagebuf_1_in    = frontbuf == 1'b0 ? backbuf_in : 1'b0; // frontbuf is read-only
+    assign imagebuf_0_addr  = frontbuf == 1'b0 ? frontbuf_addr : backbuf_addr;
+    assign imagebuf_1_addr  = frontbuf == 1'b0 ? backbuf_addr : frontbuf_addr;
 
-    task swap();
-    begin
-        frontbuf = ~frontbuf;
-    end
-    endtask
+    SB_IO #(
+        .PIN_TYPE(6'b0000_01), // simple input
+        .PULLUP(1'b1)
+    ) rx_buf (
+        .PACKAGE_PIN(rx),
+        .D_IN_0(raw_rx),
+    );
+
+    SB_IO #(
+        .PIN_TYPE(6'b0110_01), // simple output
+    ) tx_buf (
+        .PACKAGE_PIN(tx),
+        .D_OUT_0(raw_tx)
+    );
+
+    SB_IO #(
+        .PIN_TYPE(6'b0110_01), // registered output
+    ) sck_buf (
+        .PACKAGE_PIN(sck),
+        .CLOCK_ENABLE(1'b1),
+        .OUTPUT_CLK(clk),
+        .D_OUT_1(raw_sck)
+    );
 
     // imagebuf signal redirection
     always @(posedge clk)
     begin
         if (reset)
         begin
-            frontbuf <= 0;
-            swap_req <= 0;
+            frontbuf <= 1'b0;
+            swap_req <= 1'b0;
         end
         else if (streaming_ended)
         begin
             if (frame_ended)
             begin
-                swap();
+                frontbuf = ~frontbuf;
             end
             else
             begin
-                swap_req <= 1;
+                swap_req <= 1'b1;
             end
         end
         else if (swap_req)
         begin
             if (frame_ended)
             begin
-                swap();
-                swap_req <= 0;
+                frontbuf = ~frontbuf;
+                swap_req <= 1'b0;
             end
         end
     end
 
-    SB_HFOSC #(
-        .CLKHF_DIV("0b10")
-    ) high_freq_oscillator(
-        .CLKHFPU(1'b1), // power-up oscillator
-        .CLKHFEN(1'b1), // enable clock output
-        .CLKHF(clk)     // clock output
-    );
-
-    uart_receiver #(
+    uart_rx #(
         .BAUD_RATE(BAUD_RATE),
         .SYS_CLK_FREQ(SYS_CLK_FREQ)
-    ) uart_receiver_inst(
+    ) uart_rx_inst(
         .clk(clk),
         .reset(reset),
-        .rx(rx),
+        .rx(raw_rx),
         .data_out(rx_data),
         .data_ready(rx_ready)
     );
 
-    uart_transmitter #(
+    uart_tx #(
         .BAUD_RATE(BAUD_RATE),
         .SYS_CLK_FREQ(SYS_CLK_FREQ)
-    ) uart_transmitter_inst(
+    ) uart_tx_inst(
         .clk(clk),
         .reset(reset),
         .data_in(tx_data),
         .send(tx_ready),
-        .tx(tx),
+        .tx(raw_tx),
         .busy(tx_busy)
     );
 
@@ -227,7 +240,7 @@ module top(
         .mem_ready(frontbuf_ready),
         .dis_reset(dis_reset),
         .dc(dc),
-        .cs(cs_dis),
+        .cs(cs0),
         .spi_start(spi_start),
         .spi_out(spi_in),
         .mem_req(frontbuf_req),
@@ -244,8 +257,8 @@ module top(
         .data_in(spi_in),
         .data_out(spi_out),
         .busy(spi_busy),
-        .cs(cs_spi),
-        .sck(sck),
+        .cs(cs1),
+        .sck(raw_sck),
         .mosi(si),
         .miso(so)
     );
@@ -255,21 +268,21 @@ module top(
     begin
         if (reset)
         begin
-            r0 <= 1;
-            g0 <= 0;
-            b0 <= 0;
+            r0 <= 1'b1;
+            g0 <= 1'b0;
+            b0 <= 1'b0;
         end
         else if (swap_req)
         begin
-            r0 <= 1;
-            g0 <= 1;
-            b0 <= 0;
+            r0 <= 1'b1;
+            g0 <= 1'b1;
+            b0 <= 1'b0;
         end
         else
         begin
-            r0 <= 0;
-            g0 <= 0;
-            b0 <= 0;
+            r0 <= 1'b0;
+            g0 <= 1'b0;
+            b0 <= 1'b0;
         end
     end
 

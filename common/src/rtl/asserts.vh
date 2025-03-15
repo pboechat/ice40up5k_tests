@@ -1,3 +1,6 @@
+`ifndef ASSERTS_VH
+`define ASSERTS_VH
+
 task assert_eq(input integer got, input integer expected, input reg[32*8:1] var_name);
 begin
     if (got != expected)
@@ -17,3 +20,5 @@ begin
     end
 end
 endtask
+
+`endif

@@ -15,7 +15,7 @@ module spi_master_controller #(
     output reg sck,
     output reg mosi
 );
-    reg [$clog2(CLK_DIVIDER)-1:0] timer;
+    reg[$clog2(CLK_DIVIDER)-1:0] timer;
     reg clk_phase; // 0 = falling edge, 1 = rising edge
     reg sck_tick; // pulse on every SCK edge
 
@@ -23,24 +23,24 @@ module spi_master_controller #(
     begin
         if (reset) 
         begin
-            timer <= 0;
-            sck <= 0;
-            clk_phase <= 0;
-            sck_tick <= 0;
+            timer <= '0;
+            sck <= 1'b0;
+            clk_phase <= 1'b0;
+            sck_tick <= 1'b0;
         end 
         else 
         begin
             if (timer == (CLK_DIVIDER - 1)) 
             begin
-                timer <= 0;
+                timer <= 1'b0;
                 sck <= ~sck;
                 clk_phase <= ~clk_phase;
-                sck_tick <= 1;
+                sck_tick <= 1'b1;
             end 
             else 
             begin
                 timer <= timer + 1;
-                sck_tick <= 0;
+                sck_tick <= 1'b0;
             end
         end
     end
@@ -53,7 +53,7 @@ module spi_master_controller #(
     localparam LAST_STATE       = DONE;
 
     reg[$clog2(LAST_STATE):0] state;
-    reg[7:0] shift_reg;
+    reg[7:0] spi_data;
     reg[2:0] bit_index;
 
     always @(posedge clk) 
@@ -61,12 +61,12 @@ module spi_master_controller #(
         if (reset) 
         begin
             state <= IDLE;
-            busy <= 0;
-            cs <= 1;
-            data_out <= 0;
-            bit_index <= 0;
-            shift_reg <= 0;
-            mosi <= 1;
+            busy <= 1'b0;
+            cs <= 1'b1;
+            data_out <= 1'b0;
+            bit_index <= 3'd0;
+            spi_data <= 8'h00;
+            mosi <= 1'b1;
         end 
         else if (sck_tick) 
         begin
@@ -75,17 +75,17 @@ module spi_master_controller #(
                 begin
                     if (start) 
                     begin
-                        busy <= 1;
-                        cs <= 0;
-                        shift_reg <= data_in;
-                        bit_index <= 7;
+                        busy <= 1'b1;
+                        cs <= 1'b0;
+                        spi_data <= data_in;
+                        bit_index <= 3'd7;
                         mosi <= data_in[7];
                         state <= TRANSACTIONING;
                     end
                     else
                     begin
-                        busy <= 0;
-                        cs <= 1;
+                        busy <= 1'b0;
+                        cs <= 1'b1;
                     end
                 end
                 TRANSACTIONING:
@@ -93,27 +93,27 @@ module spi_master_controller #(
                     if (clk_phase)
                     begin
                         // rising edge: sample MISO and store the bit.
-                        shift_reg[bit_index] <= miso;
+                        spi_data[bit_index] <= miso;
                     end 
                     else
                     begin
                         // falling edge: if not done, update MOSI with the next bit.
-                        if (bit_index == 0) 
+                        if (~|bit_index) 
                         begin
                             state <= DONE;
                         end 
                         else 
                         begin
-                            mosi <= shift_reg[bit_index - 1];
+                            mosi <= spi_data[bit_index - 1];
                             bit_index <= bit_index - 1;
                         end
                     end
                 end
                 DONE: 
                 begin
-                    cs <= 1;
-                    busy <= 0;
-                    data_out <= shift_reg;
+                    cs <= 1'b1;
+                    busy <= 1'b0;
+                    data_out <= spi_data;
                     state <= IDLE;
                 end
                 default: 

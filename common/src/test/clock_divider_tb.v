@@ -23,7 +23,7 @@ module clock_divider_tb;
         .out_clk(out_clk)
     );
 
-    `include "assertions.vh"
+    `include "asserts.vh"
 
     initial
     begin

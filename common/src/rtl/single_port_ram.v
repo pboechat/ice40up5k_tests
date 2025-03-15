@@ -23,11 +23,11 @@ module single_port_ram #(
     begin
         if (reset) 
         begin
-            ready <= 0;
+            ready <= 1'b0;
         end 
         else 
         begin
-            ready <= 0;
+            ready <= 1'b0;
 
             if (request) 
             begin
@@ -40,7 +40,7 @@ module single_port_ram #(
                     read_data <= ram[addr[ADDR_MSB:0]];
                 end
                 
-                ready <= 1;
+                ready <= 1'b1;
             end
         end
     end

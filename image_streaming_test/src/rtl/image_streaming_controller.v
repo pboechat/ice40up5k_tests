@@ -39,15 +39,15 @@ module image_streaming_controller #(
         if (reset)
         begin
             state <= IDLE;
-            mem_req <= 0;
-            mem_in <= 0;
-            mem_addr <= 0;
-            tx_ready <= 0;
-            streaming_ended <= 0;
+            mem_req <= 1'b0;
+            mem_in <= 8'h00;
+            mem_addr <= 32'h00000000;
+            tx_ready <= 1'b0;
+            streaming_ended <= 1'b0;
 `ifdef DEBUG
-            r <= 0;
-            g <= 0;
-            b <= 0;
+            r <= 1'b0;
+            g <= 1'b0;
+            b <= 1'b0;
 `endif
         end
         else
@@ -55,26 +55,26 @@ module image_streaming_controller #(
             case (state)
             IDLE:
             begin
-                streaming_ended <= 0;
+                streaming_ended <= 1'b0;
 
                 if (rx_ready)
                 begin
                     if (rx_data == `ACK)
                     begin
-                        mem_addr <= 0;
+                        mem_addr <= 32'h00000000;
                         state <= RECEIVING_PIXEL;
 `ifdef DEBUG
-                        r <= 0;
-                        g <= 1;
-                        b <= 0;
+                        r <= 1'b0;
+                        g <= 1'b1;
+                        b <= 1'b0;
 `endif
                     end
 `ifdef DEBUG
                     else
                     begin
-                        r <= 1;
-                        g <= 0;
-                        b <= 1;
+                        r <= 1'b1;
+                        g <= 1'b0;
+                        b <= 1'b1;
                     end
 `endif
                 end
@@ -86,47 +86,47 @@ module image_streaming_controller #(
                     mem_in <= rx_data;
                     state <= STORING_PIXEL;
 `ifdef DEBUG
-                    r <= 0;
-                    g <= 1;
-                    b <= 0;
+                    r <= 1'b0;
+                    g <= 1'b1;
+                    b <= 1'b0;
 `endif
                 end
 `ifdef DEBUG
                 else
                 begin
-                    r <= 0;
-                    g <= 0;
-                    b <= 0;
+                    r <= 1'b0;
+                    g <= 1'b0;
+                    b <= 1'b0;
                 end
 `endif
             end
             STORING_PIXEL:
             begin
-                if (mem_ready == 0)
+                if (~|mem_ready)
                 begin
-                    mem_req <= 1;
+                    mem_req <= 1'b1;
                 end
                 else if (mem_req)
                 begin
-                    mem_req <= 0;
+                    mem_req <= 1'b0;
                     state <= SENDING_ACK;
                 end
             end
             SENDING_ACK:
             begin
-                if (tx_busy == 0)
+                if (~|tx_busy)
                 begin
                     tx_data <= `ACK;
-                    tx_ready <= 1;
+                    tx_ready <= 1'b1;
 `ifdef DEBUG
-                    r <= 0;
-                    g <= 1;
-                    b <= 1;
+                    r <= 1'b0;
+                    g <= 1'b1;
+                    b <= 1'b1;
 `endif
                 end
                 else if (tx_ready)
                 begin
-                    tx_ready <= 0;
+                    tx_ready <= 1'b0;
 
                     if (mem_addr == (IMAGE_BUF_SIZE - 1))
                     begin
@@ -141,12 +141,12 @@ module image_streaming_controller #(
             end
             ENDING:
             begin
-                streaming_ended <= 1;
+                streaming_ended <= 1'b1;
                 state <= IDLE;
 `ifdef DEBUG
-                r <= 0;
-                g <= 0;
-                b <= 0;
+                r <= 1'b0;
+                g <= 1'b0;
+                b <= 1'b0;
 `endif
             end
             default:

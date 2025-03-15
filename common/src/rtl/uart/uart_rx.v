@@ -1,14 +1,14 @@
-`ifndef UART_RECEIVER_V
-`define UART_RECEIVER_V
+`ifndef UART_RX_V
+`define UART_RX_V
 
-module uart_receiver #(
+module uart_rx #(
     parameter BAUD_RATE = 9_600,
     parameter SYS_CLK_FREQ = 48_000_000                     // 48 MHz
 ) (
     input wire clk,
     input wire reset,
-    input wire rx,                                          // UART RX
-    output reg [7:0] data_out,                              // received 8-bit data package
+    input wire rx,
+    output reg[7:0] data_out,                              // received 8-bit data package
     output reg data_ready                                   // is data ready?
 );
     // bit period = number of clock cycles for receiving a bit
@@ -25,13 +25,10 @@ module uart_receiver #(
     reg[3:0] bit_index = 0;                                // tracks which data bit is being received
     reg[7:0] shift_reg = 0;                                // data being received
 
-    always@(posedge clk) 
+    always @(posedge clk) 
     begin
         if (reset)
         begin
-`ifdef SIMULATION
-            $display("[uart_receiver                   ] - T(%9t) - reset", $time);
-`endif
             state <= IDLE;
             timer <= 0;
             bit_index <= 0;
@@ -47,9 +44,6 @@ module uart_receiver #(
                     data_ready <= 1'b0;                     // announce data is not ready
                     if (rx == 0)                            // rx is low, wait for the start bit 
                     begin
-`ifdef SIMULATION
-                        $display("[uart_receiver                   ] - T(%9t) - preparing for start bit", $time);
-`endif
                         state <= RCV_START_BIT;             // prepare for receiving the start bit
                         timer <= BIT_PERIOD / 2;            // sample rx in the middle of a frame
                     end
@@ -60,18 +54,12 @@ module uart_receiver #(
                     begin
                         if (rx == 0)                        // rx is still low, start bit received
                         begin
-`ifdef SIMULATION
-                            $display("[uart_receiver                   ] - T(%9t) - start bit received", $time);
-`endif
                             state <= RCV_DATA_BITS;         // prepare for receiving the data bits
                             bit_index <= 0; 
                             timer <= BIT_PERIOD - 1;
                         end 
                         else                                // false start
                         begin
-`ifdef SIMULATION
-                            $display("[uart_receiver                   ] - T(%9t) - false start", $time);
-`endif
                             state <= IDLE;                  // go back to IDLE
                         end
                     end 
@@ -84,16 +72,10 @@ module uart_receiver #(
                 begin
                     if (timer == 0)
                     begin
-`ifdef SIMULATION
-                        $display("[uart_receiver                   ] - T(%9t) - bit %d received (%b)", $time, bit_index, rx);
-`endif
                         shift_reg[bit_index] <= rx;         // receive current data bit
                         bit_index <= bit_index + 1;
                         if (bit_index == 7)                 // received all 8 bits
                         begin
-`ifdef SIMULATION
-                            $display("[uart_receiver                   ] - T(%9t) - preparing to receive stop bit", $time);
-`endif
                             state <= RCV_STOP_BIT;          // prepare for receiving the stop bit
                         end
                         timer <= BIT_PERIOD - 1;
@@ -109,18 +91,9 @@ module uart_receiver #(
                     begin
                         if (rx == 1)                        // rx is high, stop bit received
                         begin
-`ifdef SIMULATION
-                            $display("[uart_receiver                   ] - T(%9t) - stop bit received", $time);
-`endif
                             data_out <= shift_reg;
                             data_ready <= 1'b1;             // announce that data is ready!
                         end
-`ifdef SIMULATION
-                        else
-                        begin
-                            $display("[uart_receiver                   ] - T(%9t) - no stop bit, invalid data", $time);
-                        end
-`endif
                         state <= IDLE;                      // go back to IDLE
                     end 
                     else 

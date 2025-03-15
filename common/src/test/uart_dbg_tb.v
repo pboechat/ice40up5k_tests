@@ -1,5 +1,5 @@
 `include "uart_dbg.v"
-`include "uart/uart_receiver.v"
+`include "uart/uart_rx.v"
 
 module uart_dbg_tb;
     wire clk;
@@ -34,10 +34,10 @@ module uart_dbg_tb;
         .full(full)
     );
 
-    uart_receiver #(
+    uart_rx #(
         .SYS_CLK_FREQ(1),
         .BAUD_RATE(BAUD_RATE)
-    ) uart_receiver_inst(
+    ) uart_rx_inst(
         .clk(clk),
         .reset(reset),
         .rx(tx),
@@ -45,7 +45,7 @@ module uart_dbg_tb;
         .data_ready(rx_ready)
     );
 
-    `include "assertions.vh"
+    `include "asserts.vh"
 
     integer prod_step = 0;
     integer cons_step = 0;

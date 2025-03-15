@@ -2,7 +2,7 @@
 `define UART_DBG_V
 
 `include "fifo.v"
-`include "uart/uart_transmitter.v"
+`include "uart/uart_tx.v"
 
 module uart_dbg #(
     parameter SYS_CLK_FREQ = 48_000_000,
@@ -35,7 +35,7 @@ module uart_dbg #(
         .empty(empty)
     );
 
-    uart_transmitter #(
+    uart_tx #(
         .BAUD_RATE(BAUD_RATE),
         .SYS_CLK_FREQ(SYS_CLK_FREQ)
     ) uart_tx_inst(
@@ -55,19 +55,19 @@ module uart_dbg #(
             begin
                 if (!rd)
                 begin
-                    rd <= 1;
-                    send <= 1;
+                    rd <= 1'b1;
+                    send <= 1'b1;
                 end
                 else
                 begin
-                    rd <= 0;
+                    rd <= 1'b0;
                 end
             end
         end
         else
         begin
-            rd <= 0;
-            send <= 0;
+            rd <= 1'b0;
+            send <= 1'b0;
         end
     end
 endmodule

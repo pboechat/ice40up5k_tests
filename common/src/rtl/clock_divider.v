@@ -1,5 +1,5 @@
-`ifndef CLOCK_DIVIDER_VH
-`define CLOCK_DIVIDER_VH
+`ifndef CLOCK_DIVIDER_V
+`define CLOCK_DIVIDER_V
 
 module clock_divider #(
     parameter COUNT = 1
@@ -14,7 +14,7 @@ module clock_divider #(
 
     initial
     begin
-        out_clk = 0;
+        out_clk = 1'b0;
         timer <= HALF_COUNT - 1;
     end
 
@@ -27,7 +27,7 @@ module clock_divider #(
         end
         else
         begin
-            if (timer == 0)
+            if (~|timer)
             begin
                 out_clk <= ~out_clk;
                 timer <= HALF_COUNT - 1;

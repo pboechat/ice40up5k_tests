@@ -53,7 +53,7 @@ module image_streaming_controller_tb;
         -> tx_ready_hi_evt;
     end
 
-    `include "assertions.vh"
+    `include "asserts.vh"
 
     integer step = 0;
 
