@@ -9,11 +9,8 @@ clock_divider_tb:
 uart_dbg_tb:
 	make -C . test PROJECT=$(PROJECT) BENCH=common/src/test/uart_dbg_tb.v
 
-uart_receiver_tb:
-	make -C . test PROJECT=$(PROJECT) BENCH=common/src/test/uart/uart_receiver_tb.v
-
-ice40_spi_master_controller_tb:
-	make -C . test PROJECT=$(PROJECT) BENCH=common/src/test/spi/ice40_spi_master_controller_tb.v
+uart_rx_tb:
+	make -C . test PROJECT=$(PROJECT) BENCH=common/src/test/uart/uart_rx_tb.v
 
 ili9341_spi_controller_tb:
 	make -C . test PROJECT=$(PROJECT) BENCH=common/src/test/ili9341/ili9341_spi_controller_tb.v
