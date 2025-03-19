@@ -1,7 +1,7 @@
-`ifndef SINGLE_PORT_RAM_V
-`define SINGLE_PORT_RAM_V
+`ifndef DOUBLE_PORT_RAM_V
+`define DOUBLE_PORT_RAM_V
 
-module single_port_ram #(
+module double_port_ram #(
     parameter WIDTH = 8,
     parameter DEPTH = 256,
     parameter ADDR_WIDTH = $clog2(DEPTH),
@@ -9,7 +9,8 @@ module single_port_ram #(
 ) (
     input wire clk,
     input wire we,
-    input wire[ADDR_WIDTH-1:0] addr,
+    input wire[ADDR_WIDTH-1:0] addr_in,
+    input wire[ADDR_WIDTH-1:0] addr_out,
     input wire[WIDTH-1:0] data_in,
     output reg[WIDTH-1:0] data_out
 );
@@ -27,9 +28,9 @@ module single_port_ram #(
     begin
         if (we) 
         begin
-            ram[addr[ADDR_MSB:0]] <= data_in;
+            ram[addr_in[ADDR_MSB:0]] <= data_in;
         end
-        data_out <= ram[addr[ADDR_MSB:0]];
+        data_out <= ram[addr_out[ADDR_MSB:0]];
     end
 endmodule
 

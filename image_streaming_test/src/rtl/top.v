@@ -49,18 +49,10 @@ module top(
     wire tx_ready;
     wire streaming_ended;
     wire frame_ended;
-    wire frontbuf_req;
-    wire backbuf_req;
-    wire frontbuf_ready;
-    wire backbuf_ready;
     wire[7:0] frontbuf_out;
     wire[7:0] backbuf_in;
     wire[31:0] frontbuf_addr;
     wire[31:0] backbuf_addr;
-    wire imagebuf_0_req;
-    wire imagebuf_1_req;
-    wire imagebuf_0_ready;
-    wire imagebuf_1_ready;
     wire imagebuf_0_we;
     wire imagebuf_1_we;
     wire[7:0] imagebuf_0_out;
@@ -85,10 +77,6 @@ module top(
     assign b = b0 | b1;
 `endif
 
-    assign imagebuf_0_req   = frontbuf == 1'b0 ? frontbuf_req : backbuf_req;
-    assign imagebuf_1_req   = frontbuf == 1'b0 ? backbuf_req : frontbuf_req;
-    assign frontbuf_ready   = frontbuf == 1'b0 ? imagebuf_0_ready : imagebuf_1_ready;
-    assign backbuf_ready    = frontbuf == 1'b0 ? imagebuf_1_ready : imagebuf_0_ready;
     assign imagebuf_0_we    = frontbuf == 1'b1; // frontbuf is read-only
     assign imagebuf_1_we    = frontbuf == 1'b0; // frontbuf is read-only
     assign frontbuf_out     = frontbuf == 1'b0 ? imagebuf_0_out : imagebuf_1_out;
@@ -113,12 +101,12 @@ module top(
     );
 
     SB_IO #(
-        .PIN_TYPE(6'b0110_01), // registered output
+        .PIN_TYPE(6'b0101_01), // registered output
     ) sck_buf (
         .PACKAGE_PIN(sck),
         .CLOCK_ENABLE(1'b1),
         .OUTPUT_CLK(clk),
-        .D_OUT_1(raw_sck)
+        .D_OUT_0(raw_sck)
     );
 
     // imagebuf signal redirection
@@ -176,16 +164,14 @@ module top(
     single_port_ram #(
         .WIDTH(8),
         .DEPTH(IMAGE_BUF_SIZE),
-        .ADDR_WIDTH(32)
+        .ADDR_WIDTH(32),
+        .INIT_FILE("image_streaming_test/data/frontbuf.r5g6b5")
     ) imagebuf_0_inst (
         .clk(clk),
-        .reset(reset),
-        .request(imagebuf_0_req),
-        .write_enable(imagebuf_0_we),
+        .we(imagebuf_0_we),
         .addr(imagebuf_0_addr),
-        .write_data(imagebuf_0_in),
-        .read_data(imagebuf_0_out),
-        .ready(imagebuf_0_ready)
+        .data_in(imagebuf_0_in),
+        .data_out(imagebuf_0_out)
     );
 
     single_port_ram #(
@@ -194,13 +180,10 @@ module top(
         .ADDR_WIDTH(32)
     ) imagebuf_1_inst (
         .clk(clk),
-        .reset(reset),
-        .request(imagebuf_1_req),
-        .write_enable(imagebuf_1_we),
+        .we(imagebuf_1_we),
         .addr(imagebuf_1_addr),
-        .write_data(imagebuf_1_in),
-        .read_data(imagebuf_1_out),
-        .ready(imagebuf_1_ready)
+        .data_in(imagebuf_1_in),
+        .data_out(imagebuf_1_out)
     );
 
     image_streaming_controller #(
@@ -212,10 +195,8 @@ module top(
         .rx_data(rx_data),
         .rx_ready(rx_ready),
         .tx_busy(tx_busy),
-        .mem_ready(backbuf_ready),
         .tx_data(tx_data),
         .tx_ready(tx_ready),
-        .mem_req(backbuf_req),
         .mem_addr(backbuf_addr),
         .mem_in(backbuf_in),
         .streaming_ended(streaming_ended)
@@ -237,13 +218,11 @@ module top(
         .spi_busy(spi_busy),
         .spi_in(spi_out),
         .mem_in(frontbuf_out),
-        .mem_ready(frontbuf_ready),
         .dis_reset(dis_reset),
         .dc(dc),
         .cs(cs0),
         .spi_start(spi_start),
         .spi_out(spi_in),
-        .mem_req(frontbuf_req),
         .mem_addr(frontbuf_addr),
         .frame_ended(frame_ended)
     );

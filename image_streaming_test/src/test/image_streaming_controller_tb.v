@@ -3,7 +3,6 @@
 module image_streaming_controller_tb;
     wire clk;
     wire reset;
-    wire mem_req;
     wire tx_ready;
     wire swap;
     wire[7:0] tx_data;
@@ -11,7 +10,6 @@ module image_streaming_controller_tb;
     wire[31:0] mem_addr;
     reg clk_val;
     reg reset_val;
-    reg mem_ready;
     reg tx_busy;
     reg rx_ready;
     reg[7:0] rx_data;
@@ -34,23 +32,21 @@ module image_streaming_controller_tb;
         .rx_data(rx_data),
         .rx_ready(rx_ready),
         .tx_busy(tx_busy),
-        .mem_ready(mem_ready),
         .tx_data(tx_data),
         .tx_ready(tx_ready),
-        .mem_req(mem_req),
         .mem_addr(mem_addr),
         .mem_in(mem_in),
         .streaming_ended(swap)
     );
 
-    event mem_req_hi_evt, tx_ready_hi_evt;
-    always @(posedge mem_req) 
-    begin
-        -> mem_req_hi_evt;
-    end
+    event tx_ready_hi_evt, tx_ready_lo_evt;
     always @(posedge tx_ready) 
     begin
         -> tx_ready_hi_evt;
+    end
+    always @(negedge tx_ready) 
+    begin
+        -> tx_ready_lo_evt;
     end
 
     `include "asserts.vh"
@@ -75,25 +71,23 @@ module image_streaming_controller_tb;
 
         @(posedge clk);
 
+        rx_data <= step;
+        rx_ready <= 1;
+        tx_busy <= 0;
+
         forever
         begin
-            rx_data <= step;
-            rx_ready <= 1;
-            mem_ready <= 0;
+            @(tx_ready_hi_evt);
 
-            @(mem_req_hi_evt);
+            rx_ready <= 0;
+            tx_busy <= 1;
 
             assert_eq(mem_addr, step, "mem_addr");
             assert_eq(mem_in, step, "mem_in");
-
-            mem_ready <= 1;
-            tx_busy <= 0;
-
-            @(tx_ready_hi_evt);
-
-            tx_busy <= 1;
-
             assert_eq(tx_data, `ACK, "tx_data");
+
+            @(tx_ready_lo_evt);
+
 
             if (step == (IMAGE_BUF_SIZE - 1))
             begin
@@ -104,6 +98,10 @@ module image_streaming_controller_tb;
             end
 
             step = step + 1;
+
+            rx_data <= step;
+            rx_ready <= 1;
+            tx_busy <= 0;
         end
     end
 endmodule

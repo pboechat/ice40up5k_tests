@@ -22,7 +22,7 @@ module uart_rx #(
 
     reg[1:0] state;
     reg[$clog2(BIT_PERIOD)-1:0] timer;
-    reg[3:0] bit_index;                                     // tracks which data bit is being received
+    reg[2:0] bit_index;                                     // tracks which data bit is being received
     reg[7:0] rx_data;                                       // data being received
 
     always @(posedge clk) 
@@ -42,7 +42,7 @@ module uart_rx #(
                 IDLE: 
                 begin
                     ready <= 1'b0;                          // announce data is not ready
-                    if (~|rx)                               // rx is low, wait for the start bit 
+                    if (~rx)                                // rx is low, wait for the start bit 
                     begin
                         state <= RCV_START_BIT;             // prepare for receiving the start bit
                         timer <= BIT_PERIOD / 2;            // sample rx in the middle of a frame
@@ -52,7 +52,7 @@ module uart_rx #(
                 begin
                     if (~|timer)
                     begin
-                        if (~|rx)                           // rx is still low, start bit received
+                        if (~rx)                            // rx is still low, start bit received
                         begin
                             state <= RCV_DATA_BITS;         // prepare for receiving the data bits
                             bit_index <= 3'd0; 
@@ -89,7 +89,7 @@ module uart_rx #(
                 begin
                     if (~|timer) 
                     begin
-                        if (|rx)                            // rx is high, stop bit received
+                        if (rx)                             // rx is high, stop bit received
                         begin
                             data_out <= rx_data;
                             ready <= 1'b1;                  // announce that data is ready!

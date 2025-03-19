@@ -113,14 +113,12 @@ module ili9341_spi_controller #(
     input wire spi_busy,
     input wire[7:0] spi_in,
     input wire[7:0] mem_in,
-    input wire mem_ready,
     output reg dis_reset,                          // display reset
     output reg dc,                                 // data/command
     output reg cs,                                 // display cs
     output reg spi_start,
     output reg[7:0] spi_out,
     output wire[31:0] mem_addr,
-    output reg mem_req,
     output reg[31:0] display_status,
     output reg frame_ended
 );
@@ -188,7 +186,6 @@ module ili9341_spi_controller #(
             spi_out <= 8'h00;
             spi_start <= 1'b0;
             display_status <= `INVALID_DISPLAY_STATUS;
-            mem_req <= 1'b0;
             param <= 32'h00000000;
             frame_ended <= 1'b0;
         end
@@ -235,7 +232,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -250,7 +247,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             timer <= SW_RESET_TIMER - 1;
@@ -274,7 +271,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -289,7 +286,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             timer <= SLPOUT_TIMER - 1;
@@ -313,7 +310,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -328,7 +325,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -352,7 +349,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             state_setup_flg <= 'd0;
@@ -364,7 +361,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -379,7 +376,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -394,7 +391,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             state_setup_flg <= 'd0;
@@ -406,7 +403,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -421,7 +418,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             state_setup_flg <= 'd0;
@@ -433,7 +430,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -448,7 +445,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -463,7 +460,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd2)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             // ignore parameter 1
 
@@ -480,7 +477,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd3)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             param[31:24] <= spi_in; // parameter 2
 
@@ -497,7 +494,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd4)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             param[23:16] <= spi_in; // parameter 3
 
@@ -514,7 +511,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd5)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             param[15:8] <= spi_in; // parameter 4
 
@@ -531,7 +528,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             param[7:0] <= spi_in;
                             display_status <= {param[31:8], spi_in};
@@ -546,7 +543,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -561,7 +558,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -576,7 +573,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd2)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -591,7 +588,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd3)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -606,7 +603,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd4)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -621,7 +618,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             state_setup_flg <= 'd0;
@@ -633,7 +630,7 @@ module ili9341_spi_controller #(
                 begin
                     if (state_setup_flg == 'd0)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -648,7 +645,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd1)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -663,7 +660,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd2)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -678,7 +675,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd3)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -693,7 +690,7 @@ module ili9341_spi_controller #(
                     end
                     else if (state_setup_flg == 'd4)
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -708,7 +705,7 @@ module ili9341_spi_controller #(
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b1;
                             state_setup_flg <= 'd0;
@@ -722,7 +719,7 @@ module ili9341_spi_controller #(
                     begin
                         frame_ended <= 1'b0;
 
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `COMMAND_BIT;
@@ -746,24 +743,19 @@ module ili9341_spi_controller #(
                         if (pixel_addr_ready)
                         begin
                             pixel_mem_addr_req <= 1'b0;
-                            mem_req <= 1'b1;
 
                             state_setup_flg <= 'd2;
                         end
                     end
                     else if (state_setup_flg == 'd2)
                     begin
-                        if (mem_ready)
-                        begin
-                            spi_out <= mem_in;
-                            mem_req <= 1'b0;
+                        spi_out <= mem_in;
 
-                            state_setup_flg <= 'd3;
-                        end
+                        state_setup_flg <= 'd3;
                     end
                     else
                     begin
-                        if (~|spi_busy)
+                        if (~spi_busy)
                         begin
                             cs <= 1'b0;
                             dc <= `DATA_BIT;
@@ -773,7 +765,7 @@ module ili9341_spi_controller #(
                         begin
                             spi_start <= 1'b0;
 
-                            if (~|pixel_byte_idx)
+                            if (~pixel_byte_idx)
                             begin
                                 pixel_byte_idx <= 1'b1;
                                 pixel_mem_addr_req <= 1'b1;

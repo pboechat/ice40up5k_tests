@@ -49,11 +49,11 @@ module uart_dbg #(
 
     always @(posedge clk)
     begin
-        if (!tx_busy)
+        if (~tx_busy)
         begin
-            if (!empty)
+            if (~empty)
             begin
-                if (!rd)
+                if (~rd)
                 begin
                     rd <= 1'b1;
                     send <= 1'b1;

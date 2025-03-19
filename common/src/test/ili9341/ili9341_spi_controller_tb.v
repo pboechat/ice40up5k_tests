@@ -8,7 +8,6 @@ module ili9341_spi_controller_tb;
     wire dc;
     wire spi_start;
     wire[7:0] spi_out;
-    wire mem_req;
     wire[31:0] display_status;
     wire[31:0] mem_addr;
     reg clk_val;
@@ -16,7 +15,6 @@ module ili9341_spi_controller_tb;
     reg spi_busy_val;
     reg[7:0] spi_in;
     reg[7:0] mem_in;
-    reg mem_ready;
 
     `include "functions.vh"
 
@@ -45,13 +43,11 @@ module ili9341_spi_controller_tb;
         .spi_busy(spi_busy),
         .spi_in(spi_in),
         .mem_in(mem_in),
-        .mem_ready(mem_ready),
         .dis_reset(dis_reset),
         .dc(dc),
         .spi_start(spi_start),
         .spi_out(spi_out),
         .mem_addr(mem_addr),
-        .mem_req(mem_req),
         .display_status(display_status)
     );
     
@@ -117,13 +113,7 @@ module ili9341_spi_controller_tb;
 
     always @(posedge clk)
     begin
-        mem_ready <= 0;
-
-        if (mem_req)
-        begin
-            mem_in <= next_pixel_byte(mem_addr);
-            mem_ready <= 1;
-        end
+        mem_in <= next_pixel_byte(mem_addr);
     end
 
     event dis_reset_hi_evt, dis_reset_lo_evt, spi_start_hi_evt;

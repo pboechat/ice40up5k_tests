@@ -71,14 +71,11 @@ module uart_tx #(
                     tx <= tx_data[bit_index];                   // transmit the current data bit for the duration of a frame
                     if (~|timer) 
                     begin
+                        bit_index <= bit_index + 1;
                         if (bit_index == 3'd7)                  // all data bits transmitted
                         begin
                             state <= TMT_STOP_BIT;              // prepare for transmitting the stop bit
                         end 
-                        else 
-                        begin
-                            bit_index <= bit_index + 1;
-                        end
                         timer <= BIT_PERIOD - 1;
                     end 
                     else 

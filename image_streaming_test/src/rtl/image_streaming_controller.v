@@ -9,10 +9,8 @@ module image_streaming_controller #(
     input wire[7:0] rx_data,
     input wire rx_ready,
     input wire tx_busy,
-    input wire mem_ready,
     output reg[7:0] tx_data,
     output reg tx_ready,
-    output reg mem_req,
     output reg[7:0] mem_in,
     output reg[31:0] mem_addr,
     output reg streaming_ended
@@ -28,8 +26,7 @@ module image_streaming_controller #(
     localparam IDLE             = 3'b000;
     localparam RECEIVING_PIXEL  = 3'b001;
     localparam STORING_PIXEL    = 3'b010;
-    localparam SENDING_ACK      = 3'b011;
-    localparam ENDING           = 3'b100;
+    localparam ENDING           = 3'b011;
     localparam LAST_STATE       = ENDING;
 
     reg[$clog2(LAST_STATE):0] state;
@@ -39,7 +36,6 @@ module image_streaming_controller #(
         if (reset)
         begin
             state <= IDLE;
-            mem_req <= 1'b0;
             mem_in <= 8'h00;
             mem_addr <= 32'h00000000;
             tx_ready <= 1'b0;
@@ -102,19 +98,7 @@ module image_streaming_controller #(
             end
             STORING_PIXEL:
             begin
-                if (~|mem_ready)
-                begin
-                    mem_req <= 1'b1;
-                end
-                else if (mem_req)
-                begin
-                    mem_req <= 1'b0;
-                    state <= SENDING_ACK;
-                end
-            end
-            SENDING_ACK:
-            begin
-                if (~|tx_busy)
+                if (~tx_busy)
                 begin
                     tx_data <= `ACK;
                     tx_ready <= 1'b1;

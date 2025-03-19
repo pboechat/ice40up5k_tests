@@ -1,6 +1,10 @@
 `include "ili9341/ili9341_spi_controller.v"
 `include "spi/spi_master_controller.v"
 `include "uart_dbg.v"
+`include "single_port_ram.v"
+
+// procedural image (rainbow)
+//`define PROC_IMAGE
 
 module top(
     input wire clk,                         // 12 MHz external clock oscillator
@@ -23,7 +27,11 @@ module top(
 
     localparam DISPLAY_X = 320;
     localparam DISPLAY_Y = 240;
-    localparam DOWNSCALE_SHIFT = 2;
+    localparam DOWNSCALE_SHIFT = 3;
+
+    localparam IMAGE_BUF_X = DISPLAY_X >> DOWNSCALE_SHIFT;
+    localparam IMAGE_BUF_Y = DISPLAY_Y >> DOWNSCALE_SHIFT;
+    localparam IMAGE_BUF_SIZE = IMAGE_BUF_X * IMAGE_BUF_Y * 2;
 
     // rainbow colors
 
@@ -42,8 +50,8 @@ module top(
     localparam MAGENTA = {5'b11111, 6'b000000, 5'b11111};
     localparam RASPBERRY = {5'b11111, 6'b000000, 5'b01111};
 
-    localparam BYTES_PER_ROW = (DISPLAY_X >> DOWNSCALE_SHIFT) * 2;
-    localparam ROWS_PER_COLOR = (DISPLAY_Y >> DOWNSCALE_SHIFT) / NUM_COLORS;
+    localparam BYTES_PER_ROW = IMAGE_BUF_X * 2;
+    localparam ROWS_PER_COLOR = IMAGE_BUF_Y / NUM_COLORS;
     localparam COLOR_BOUNDARY = BYTES_PER_ROW * ROWS_PER_COLOR;
 
     wire clk;
@@ -52,12 +60,10 @@ module top(
     wire[7:0] spi_in;
     wire[7:0] spi_out;
     wire[31:0] mem_addr;
-    wire mem_req;
     wire cs0;
     wire cs1;
     wire raw_tx;
     wire raw_sck;
-    reg mem_ready;
     reg[7:0] mem_out;
 `ifdef DEBUG
     wire[31:0] display_status;
@@ -78,73 +84,80 @@ module top(
     );
 
     SB_IO #(
-        .PIN_TYPE(6'b0110_01), // registered output
+        .PIN_TYPE(6'b0101_01), // registered output
     ) sck_buf (
         .PACKAGE_PIN(sck),
         .CLOCK_ENABLE(1'b1),
         .OUTPUT_CLK(clk),
-        .D_OUT_1(raw_sck)
+        .D_OUT_0(raw_sck)
     );
 
-    // memory controller mock
-
+`ifdef PROC_IMAGE
     always @(posedge clk)
     begin
-        mem_ready <= 1'b0;
-
-        if (mem_req)
+        if (mem_addr < COLOR_BOUNDARY)
         begin
-            if (mem_addr < COLOR_BOUNDARY)
-            begin
-                mem_out <= mem_addr[0] ? RED[7:0] : RED[15:8];
-            end
-            else if (mem_addr < (2 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? ORANGE[7:0] : ORANGE[15:8];
-            end
-            else if (mem_addr < (3 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? YELLOW[7:0] : YELLOW[15:8];
-            end
-            else if (mem_addr < (4 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? LIME_GREEN[7:0] : LIME_GREEN[15:8];
-            end
-            else if (mem_addr < (5 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? GREEN[7:0] : GREEN[15:8];
-            end
-            else if (mem_addr < (6 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? TURQUOISE[7:0] : TURQUOISE[15:8];
-            end
-            else if (mem_addr < (7 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? CYAN[7:0] : CYAN[15:8];
-            end
-            else if (mem_addr < (8 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? AZURE[7:0] : AZURE[15:8];
-            end
-            else if (mem_addr < (9 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? BLUE[7:0] : BLUE[15:8];
-            end
-            else if (mem_addr < (10 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? VIOLET[7:0] : VIOLET[15:8];
-            end
-            else if (mem_addr < (11 * COLOR_BOUNDARY))
-            begin
-                mem_out <= mem_addr[0] ? MAGENTA[7:0] : MAGENTA[15:8];
-            end
-            else
-            begin
-                mem_out <= mem_addr[0] ? RASPBERRY[7:0] : RASPBERRY[15:8];
-            end
-            mem_ready <= 1'b1;
+            mem_out <= mem_addr[0] ? RED[7:0] : RED[15:8];
+        end
+        else if (mem_addr < (2 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? ORANGE[7:0] : ORANGE[15:8];
+        end
+        else if (mem_addr < (3 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? YELLOW[7:0] : YELLOW[15:8];
+        end
+        else if (mem_addr < (4 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? LIME_GREEN[7:0] : LIME_GREEN[15:8];
+        end
+        else if (mem_addr < (5 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? GREEN[7:0] : GREEN[15:8];
+        end
+        else if (mem_addr < (6 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? TURQUOISE[7:0] : TURQUOISE[15:8];
+        end
+        else if (mem_addr < (7 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? CYAN[7:0] : CYAN[15:8];
+        end
+        else if (mem_addr < (8 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? AZURE[7:0] : AZURE[15:8];
+        end
+        else if (mem_addr < (9 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? BLUE[7:0] : BLUE[15:8];
+        end
+        else if (mem_addr < (10 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? VIOLET[7:0] : VIOLET[15:8];
+        end
+        else if (mem_addr < (11 * COLOR_BOUNDARY))
+        begin
+            mem_out <= mem_addr[0] ? MAGENTA[7:0] : MAGENTA[15:8];
+        end
+        else
+        begin
+            mem_out <= mem_addr[0] ? RASPBERRY[7:0] : RASPBERRY[15:8];
         end
     end
+`else
+    single_port_ram #(
+        .WIDTH(8),
+        .DEPTH(IMAGE_BUF_SIZE),
+        .ADDR_WIDTH(32),
+        .INIT_FILE("display_test/data/tv_card.r5g6b5")
+    ) imagebuf_0_inst (
+        .clk(clk),
+        .we(1'b0),
+        .addr(mem_addr),
+        .data_in(),
+        .data_out(mem_out)
+    );
+`endif
 
     ili9341_spi_controller #(
         .SYS_CLK_FREQ(SYS_CLK_FREQ),
@@ -157,13 +170,11 @@ module top(
         .spi_busy(spi_busy),
         .spi_in(spi_out),
         .mem_in(mem_out),
-        .mem_ready(mem_ready),
         .dis_reset(dis_reset),
         .dc(dc),
         .cs(cs0),
         .spi_start(spi_start),
         .spi_out(spi_in),
-        .mem_req(mem_req),
         .mem_addr(mem_addr)
 `ifdef DEBUG
         , .display_status(display_status)
@@ -217,7 +228,7 @@ module top(
             r <= 1'b0;
             if (last_seen_display_status != display_status)
             begin
-                if (~|dbg_wr)
+                if (~dbg_wr)
                 begin
                     if (display_status_tx_step == 'd0)
                     begin

@@ -105,9 +105,9 @@ module command_decoder(
                 end
                 NOTIFY:
                 begin
-                    if (~|snd_busy)                     // wait for an opportunity to send the decode result
+                    if (~snd_busy)                      // wait for an opportunity to send the decode result
                     begin
-                        if (|decode_error)              // send decode error
+                        if (decode_error)               // send decode error
                         begin
                             snd_data <= {5'b11111, decode_error};
                         end
@@ -121,7 +121,7 @@ module command_decoder(
                 end
                 NOTIFY_WAIT:
                 begin
-                    if (~|snd_busy)
+                    if (~snd_busy)
                     begin
                         snd_data <= 8'h00;
                         snd_ready <= 1'b0;

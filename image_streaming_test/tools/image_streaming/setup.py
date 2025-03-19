@@ -19,7 +19,8 @@ setup(
     url='https://github.com/pboechat/ice50up5k_tests/image_streaming_test/tools/image_streaming',
     entry_points = {
         'console_scripts': [
-            'send_image=image_streaming.send_image:main'
+            'send_image=image_streaming.send_image:main',
+            'dump_image=image_streaming.dump_image:main'
         ],
     }
 )
