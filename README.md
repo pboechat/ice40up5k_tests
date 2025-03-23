@@ -11,6 +11,7 @@ For building the designs:
 make
 yosys
 nextpnr-ice40
+fpga-icestorm
 iverilog (simulation-only)
 ```
 
