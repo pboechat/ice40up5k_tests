@@ -10,7 +10,7 @@ For building the designs:
 ```
 make
 yosys
-nextpnr
+nextpnr-ice40
 iverilog (simulation-only)
 ```
 
