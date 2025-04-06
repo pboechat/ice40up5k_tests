@@ -2,10 +2,10 @@ set_io clk          35
 set_io reset        43
 set_io dc           27  # 38b
 set_io dis_reset    26  # 39a
-set_io sck          15  # 34a
-set_io si           17  # 33b
-set_io so           14  # 32a
-set_io cs           16  # 35b
+set_io sck          37  # 45a_G1
+set_io si           32  # 43a
+set_io so           31  # 42b
+set_io cs           36  # 48b
 set_io tx           23  # 37a
 set_io RGB0         39
 set_io RGB1         40
